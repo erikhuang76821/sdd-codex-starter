@@ -130,7 +130,81 @@ Codex 回覆 MUST 用視覺區塊與我自己的文字明顯區隔, 避免讀者
 - 跨多步驟工作一律先列 task list, 再 in_progress / completed 滾動更新
 - 不要把使用者已說過的決策再問一次, 翻 proposal / design 自己讀
 
-## 6. 參考範例
+## 6. Task 寫作: 獨立可驗證
+
+`tasks.md` 不是 brainstorm list, 是執行契約。每個 task MUST:
+
+1. **獨立可執行**: 不依賴其他未完成 task, 一個 session 內能做完
+2. **客觀可驗證**: 完成的判定不是「我覺得做完了」, 而是有具體驗證方法
+3. **對應到 spec scenario**: 末尾加 `→ verified by: scenario "<scenario name>"`
+   - 若該 task 不對應任何 scenario (例如 repo 初始化), 寫 `→ verified by: 無 (理由: <一句話>)`
+4. **格式**: `- [ ] <組號>.<項號> <動作> → verified by: scenario "<name>"`
+
+範例:
+```markdown
+- [ ] 4.3 在 root 掛 QueryClientProvider 並設預設 staleTime → verified by: scenario "列表頁讀資料"
+- [ ] 1.1 建立 admin-frontend repo 並 init Next.js 15 → verified by: 無 (理由: 純 repo 初始化, 無 scenario 對應)
+```
+
+禁止寫法 (anti-pattern):
+
+- ❌ `- [ ] 重構 X 模組` (沒有完成判定)
+- ❌ `- [ ] 優化效能` (沒有目標數值)
+- ❌ `- [ ] 確保品質` (主觀)
+
+詳見 [`docs/task-writing.md`](docs/task-writing.md)。
+
+## 7. Spec → Code 的 Human Review Gate
+
+`openspec validate --strict` 是**機器層**檢查 (格式、缺漏), 不是**人類層**確認
+(spec 描述的行為是否真的是團隊要的)。
+
+硬性規定:
+
+1. specs 寫完且 `--strict` 通過後, MUST **等人類在 spec 頂端寫 `approved-by:` 標記**, 才能進 tasks 撰寫或實作。
+2. AI agent 在 specs 階段完成後 MUST 主動提醒「請 review 並加上 approved-by」, 不得自動接著寫 tasks。
+3. approved-by 格式: 寫在 spec.md 頂端, `## ADDED Requirements` 之前:
+   ```markdown
+   <!-- approved-by: <human-name> <YYYY-MM-DD>
+        notes: <若有 caveat 寫一句; 否則省略> -->
+   ```
+4. 若 approver 不同意 spec, MUST 退回 design 或 specs 重寫, 不得「以 commit comment 表達不同意」蒙混。
+5. CI grep 守: spec.md 缺 `approved-by:` 標記 → CI fail (允許 `approved-by: PENDING` 暫態, 但 archive 前必須換成真名)。
+
+## 8. Codex Audit Trail (第二意見留證)
+
+§3 規定**何時必須呼叫 codex**。本節規定**留證**: 即便最終決定不諮詢, 也要在 design.md 明記理由, 不得無聲跳過。
+
+硬性規定:
+
+1. `design.md` 的 `## Decisions` 區頂端 MUST 含一行:
+   ```
+   第二意見來源: <codex (codex:rescue, YYYY-MM-DD) | 無 (理由: <一句話>)>
+   ```
+2. 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純 bugfix, 不涉及技術選型)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白。
+3. 若諮詢結果與最終決定衝突, design.md 個別 Decision 下 MUST 寫「Codex 建議 X, 採 Y, 因為 ...」。
+4. CI grep 守: 凡 `design.md` 內出現 `## Decisions` 區但前面沒有「第二意見來源:」一行 → CI fail。
+
+設計理由: 不強制「行為」(must call codex), 強制「留證」(must record decision rationale)。
+留證可被 grep, 行為很難 grep。
+
+## 9. Lint / CI Fail 處理 SOP
+
+AI 不得用「重新 push」或「重跑 CI」當作修法。流程:
+
+1. **commit 前**: MUST 在本機跑 `openspec validate --strict <change-id>`; 若有 git hook 安裝指南 (`hooks/pre-commit`), 應該安裝。
+2. **CI fail 時**: MUST 先讀 log:
+   ```
+   gh run view --log-failed
+   ```
+3. **找根因**: 失敗訊息是什麼? 哪個 step? 哪一行? 不得猜測, 不得隨機改。
+4. **修完本機驗證**: 本機重現 CI 的檢查 (例如 `openspec validate --strict`、grep 規則), 確認綠燈再 push。
+5. **禁止**:
+   - 不得單純 `git commit --amend` 後 `git push --force` 再看 CI (那只是再賭一次)
+   - 不得 disable failing assert 來「修」 CI
+   - 不得跳過 hook (`--no-verify`)
+
+## 10. 參考範例
 
 `examples/select-admin-frontend-stack/` 是一個完整、`openspec validate --strict` 通過的 reference change, 涵蓋:
 

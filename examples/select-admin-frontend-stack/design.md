@@ -6,8 +6,6 @@
 - 未來 5 年仍有社群動能、人才招募容易
 - 後台場景: 大量表格、表單、權限頁面, 不是 marketing site
 
-第二意見來源: codex (codex:rescue, 2026-05-19), 內容已納入下列 Decisions。
-
 ## Goals / Non-Goals
 
 **Goals:**
@@ -20,6 +18,8 @@
 - 不在本次重寫 PHP API 或 SSO
 
 ## Decisions
+
+第二意見來源: codex (codex:rescue, 2026-05-19), 內容已納入下列 Decisions。
 
 ### D1. 主框架: Next.js (App Router)
 

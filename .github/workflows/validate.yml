@@ -35,7 +35,7 @@ jobs:
       - name: Show status
         run: openspec status --change select-admin-frontend-stack
 
-      - name: Assert error-path scenario coverage
+      - name: Assert error-path scenario coverage (AGENTS §2)
         shell: bash
         run: |
           SPEC=openspec/changes/select-admin-frontend-stack/specs/admin-frontend-stack/spec.md
@@ -45,5 +45,51 @@ jobs:
           echo "Error-path scenarios: $ERR_COUNT"
           if [ "$ERR_COUNT" -lt "$REQ_COUNT" ]; then
             echo "::error::Each Requirement MUST have at least one [異常] error-path scenario. Got $ERR_COUNT errors for $REQ_COUNT requirements."
+            exit 1
+          fi
+
+      - name: Assert Codex audit trail in design.md (AGENTS §8)
+        shell: bash
+        run: |
+          DESIGN=openspec/changes/select-admin-frontend-stack/design.md
+          if grep -q "^## Decisions" "$DESIGN"; then
+            if ! grep -q "第二意見來源:" "$DESIGN"; then
+              echo "::error::$DESIGN has '## Decisions' but lacks '第二意見來源:' line. Required by AGENTS §8 (Codex audit trail)."
+              exit 1
+            fi
+            # Reject the empty rationale form
+            if grep -qE "第二意見來源: *無 *\(理由: *(不需要|N/A|無) *\)" "$DESIGN"; then
+              echo "::error::Vague rationale for skipping second opinion. Be specific about why Codex was not consulted."
+              exit 1
+            fi
+            echo "Codex audit trail present: $(grep '第二意見來源:' "$DESIGN")"
+          fi
+
+      - name: Assert approved-by on specs (AGENTS §7)
+        shell: bash
+        run: |
+          fail=0
+          while IFS= read -r spec; do
+            if ! grep -q "approved-by:" "$spec"; then
+              echo "::error::$spec lacks 'approved-by:' marker. Required by AGENTS §7 (Spec → Code human review gate)."
+              fail=1
+            else
+              echo "approved-by present in $spec: $(grep -m1 'approved-by:' "$spec")"
+            fi
+          done < <(find openspec/changes/select-admin-frontend-stack/specs -name "spec.md")
+          exit $fail
+
+      - name: Assert verified-by on tasks.md (AGENTS §6)
+        shell: bash
+        run: |
+          TASKS=openspec/changes/select-admin-frontend-stack/tasks.md
+          TOTAL=$(grep -cE "^- \[[ x]\] " "$TASKS")
+          ANNOTATED=$(grep -cE "^- \[[ x]\] .*→ verified by:" "$TASKS")
+          echo "Total tasks: $TOTAL"
+          echo "Annotated with → verified by:: $ANNOTATED"
+          if [ "$TOTAL" != "$ANNOTATED" ]; then
+            MISSING=$((TOTAL - ANNOTATED))
+            echo "::error::$MISSING task line(s) lack '→ verified by:' annotation. Required by AGENTS §6 (Task writing rules)."
+            grep -nE "^- \[[ x]\] " "$TASKS" | grep -vE "→ verified by:" || true
             exit 1
           fi

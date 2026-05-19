@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# sdd-codex-starter pre-commit hook
+#
+# What it does:
+#   1. Runs `openspec validate --strict` on every active change in openspec/changes/
+#      (skipping openspec/changes/archive/)
+#   2. Greps for the audit-trail rules:
+#        - design.md  → must contain "第二意見來源:" (Codex audit trail, AGENTS §8)
+#        - spec.md    → must contain "approved-by:" or "approved-by: PENDING"
+#                       (Spec → Code gate, AGENTS §7)
+#        - tasks.md   → every checkbox line must contain "→ verified by:"
+#                       (Task writing, AGENTS §6)
+#
+# To install:
+#   ln -s ../../hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# Or on Windows:
+#   copy hooks\pre-commit .git\hooks\pre-commit
+#
+# To bypass (not recommended; see AGENTS §9):
+#   git commit --no-verify
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if [ ! -d "openspec/changes" ]; then
+  echo "[pre-commit] No openspec/changes/ directory; skipping validation."
+  exit 0
+fi
+
+# Discover active changes (skip archive)
+mapfile -t changes < <(find openspec/changes -mindepth 1 -maxdepth 1 -type d ! -name archive -exec basename {} \;)
+
+if [ "${#changes[@]}" -eq 0 ]; then
+  echo "[pre-commit] No active changes; skipping validation."
+  exit 0
+fi
+
+if ! command -v openspec >/dev/null 2>&1; then
+  echo "[pre-commit] ERROR: openspec CLI not installed."
+  echo "             Install with: npm install -g @fission-ai/openspec"
+  exit 1
+fi
+
+fail=0
+
+for change in "${changes[@]}"; do
+  echo "[pre-commit] Validating change: $change"
+
+  # 1. openspec strict validate
+  if ! openspec validate "$change" --strict; then
+    fail=1
+    continue
+  fi
+
+  change_dir="openspec/changes/$change"
+
+  # 2. design.md → "第二意見來源:" (Codex audit trail)
+  if [ -f "$change_dir/design.md" ]; then
+    if grep -q "^## Decisions" "$change_dir/design.md"; then
+      if ! grep -q "第二意見來源:" "$change_dir/design.md"; then
+        echo "  ✗ design.md has '## Decisions' but lacks '第二意見來源:' line (AGENTS §8)"
+        fail=1
+      fi
+    fi
+  fi
+
+  # 3. specs/**/spec.md → "approved-by:"
+  while IFS= read -r spec; do
+    if ! grep -q "approved-by:" "$spec"; then
+      echo "  ✗ $spec lacks 'approved-by:' marker (AGENTS §7)"
+      fail=1
+    fi
+  done < <(find "$change_dir/specs" -name "spec.md" 2>/dev/null)
+
+  # 4. tasks.md → every "- [ ]" line must have "→ verified by:"
+  if [ -f "$change_dir/tasks.md" ]; then
+    missing=$(grep -cE "^- \[[ x]\] " "$change_dir/tasks.md" || true)
+    annotated=$(grep -cE "^- \[[ x]\] .*→ verified by:" "$change_dir/tasks.md" || true)
+    if [ "$missing" != "$annotated" ]; then
+      echo "  ✗ tasks.md has $missing task lines but only $annotated annotated with '→ verified by:' (AGENTS §6)"
+      fail=1
+    fi
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] FAILED. Fix the issues above before committing."
+  echo "             See docs/spec-writing.md, docs/task-writing.md, and AGENTS.md."
+  exit 1
+fi
+
+echo "[pre-commit] All checks passed."
+exit 0

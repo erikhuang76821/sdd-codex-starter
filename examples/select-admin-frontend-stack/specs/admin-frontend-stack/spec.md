@@ -1,3 +1,6 @@
+<!-- approved-by: erikhuang 2026-05-19
+     notes: pilot 範例 spec, 用於 sdd-codex-starter reference change -->
+
 ## ADDED Requirements
 
 <!-- 寫作規範: 每個 Requirement 至少要有一條正常路徑 (WHEN/THEN) 與一條異常路徑 (IF/THEN)。
