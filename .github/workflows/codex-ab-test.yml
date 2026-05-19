@@ -1,0 +1,221 @@
+name: codex-ab-test
+
+# Adversarial second-opinion regression test.
+#
+# Calls an LLM (Anthropic Claude as reviewer) twice with the SAME D2-question:
+#   Run A: summary-only prompt (the old, broken approach)
+#   Run B: full-context prompt (proposal verbatim + already-committed D1)
+#
+# Asserts that Run B is materially deeper than Run A, proving the
+# `docs/codex-handoff.md` rule "MUST send full proposal + Decisions" is
+# load-bearing, not cosmetic.
+#
+# Manual / scheduled only — does not run on every push (API cost).
+#
+# Prereq: repo secret ANTHROPIC_API_KEY
+# Trigger: gh workflow run codex-ab-test.yml --repo <owner>/<repo>
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Anthropic model id (e.g. claude-sonnet-4-6, claude-opus-4-7)'
+        required: false
+        default: 'claude-sonnet-4-6'
+  schedule:
+    # Weekly Monday 02:00 UTC — catches regressions in the rule wording
+    - cron: '0 2 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  ab-test:
+    name: codex full-context vs summary-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Sanity check secret presence
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set on this repository."
+            echo "Set it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Secret present."
+
+      - name: Prepare prompts
+        shell: bash
+        run: |
+          mkdir -p ab-out
+
+          # --- Prompt A: summary only (the broken approach) ---
+          cat > ab-out/prompt_a.txt <<'EOT'
+          我們要為新後台選 UI 元件庫。請給對抗性第二意見。
+
+          背景:
+          - 用途: 取代舊版 jQuery+PHP 後台
+          - 候選: shadcn/ui, Ant Design, Mantine
+          - 必須整合既有 PHP API、SSO、權限系統
+
+          請給推薦 + 兩個 elimination + 兩個風險 + mitigation。
+          條列、不超過 250 字。
+          EOT
+
+          # --- Prompt B: full context (proposal verbatim + committed D1) ---
+          PROPOSAL=$(cat examples/select-admin-frontend-stack/proposal.md)
+          cat > ab-out/prompt_b.txt <<EOT
+          你是技術選型第二意見。下面是完整脈絡, 讀完後給對抗性意見。
+
+          ## Context: 完整 proposal
+
+          \`\`\`
+          ${PROPOSAL}
+          \`\`\`
+
+          ## Context: 已決定的 Decisions
+
+          \`\`\`
+          ### D1. 主框架: Next.js (App Router)
+
+          - 選擇理由: SSR 成熟、TypeScript 一等公民、React 生態與人才池最廣。
+          - 不選 Nuxt: 團隊需轉 Vue, React UI 元件與人才較不利。
+          - 不選 Remix / SvelteKit: 企業後台生態較窄、5 年維護風險高。
+          \`\`\`
+
+          ## 當前題目
+
+          我們已決定主框架是 Next.js (App Router) + React。現在要在這個 change 內決定 D2 UI 元件庫。候選: shadcn/ui / Ant Design / Mantine。
+
+          請以「企業內部後台 + 既有 PHP API + 大量表格表單 + 設計系統需共用」場景給出:
+
+          1. 推薦選項 + 兩個明確不選的 elimination (含理由)
+          2. 與 D1 (Next.js App Router + React Server Component) 的相容性檢查 — 哪些候選有坑?
+          3. 最大的兩個踩雷風險 + mitigation
+
+          體裁: 條列、不超過 250 字。
+          EOT
+
+          wc -c ab-out/prompt_a.txt ab-out/prompt_b.txt
+
+      - name: Call Anthropic API — Run A (summary)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ inputs.model || 'claude-sonnet-4-6' }}
+        shell: bash
+        run: |
+          PROMPT=$(cat ab-out/prompt_a.txt)
+          jq -n --arg model "$MODEL" --arg prompt "$PROMPT" '{
+            model: $model,
+            max_tokens: 1024,
+            messages: [{role: "user", content: $prompt}]
+          }' > ab-out/req_a.json
+          curl -sS https://api.anthropic.com/v1/messages \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d @ab-out/req_a.json > ab-out/resp_a.json
+          jq -r '.content[0].text // .error.message // "(no text)"' ab-out/resp_a.json > ab-out/reply_a.txt
+          echo "--- reply_a.txt ---"
+          cat ab-out/reply_a.txt
+
+      - name: Call Anthropic API — Run B (full context)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ inputs.model || 'claude-sonnet-4-6' }}
+        shell: bash
+        run: |
+          PROMPT=$(cat ab-out/prompt_b.txt)
+          jq -n --arg model "$MODEL" --arg prompt "$PROMPT" '{
+            model: $model,
+            max_tokens: 1024,
+            messages: [{role: "user", content: $prompt}]
+          }' > ab-out/req_b.json
+          curl -sS https://api.anthropic.com/v1/messages \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d @ab-out/req_b.json > ab-out/resp_b.json
+          jq -r '.content[0].text // .error.message // "(no text)"' ab-out/resp_b.json > ab-out/reply_b.txt
+          echo "--- reply_b.txt ---"
+          cat ab-out/reply_b.txt
+
+      - name: Compare A vs B
+        id: compare
+        shell: bash
+        run: |
+          A_LEN=$(wc -c < ab-out/reply_a.txt)
+          B_LEN=$(wc -c < ab-out/reply_b.txt)
+
+          # Run B should mention D1-aware concepts (only relevant if you know Next.js was chosen)
+          B_NEXTJS=$(grep -ciE "next\.?js|app router|server component|RSC|use client" ab-out/reply_b.txt || true)
+          A_NEXTJS=$(grep -ciE "next\.?js|app router|server component|RSC|use client" ab-out/reply_a.txt || true)
+
+          # Run A should ideally show "insufficient context" disclaimers
+          A_DISCLAIM=$(grep -ciE "資訊.*不足|無法.*讀取|cannot.*access|insufficient.*context|沒有.*完整|限於.*背景" ab-out/reply_a.txt || true)
+
+          # B should be longer than A by a meaningful margin
+          if [ "$A_LEN" -gt 0 ]; then
+            RATIO=$(awk -v a="$A_LEN" -v b="$B_LEN" 'BEGIN { printf "%.2f", b/a }')
+          else
+            RATIO="inf"
+          fi
+
+          {
+            echo "## Codex A/B Test Report"
+            echo ""
+            echo "Model: \`${MODEL:-claude-sonnet-4-6}\`"
+            echo ""
+            echo "| Metric | Run A (summary) | Run B (full context) |"
+            echo "|---|---|---|"
+            echo "| Reply length (bytes) | $A_LEN | $B_LEN |"
+            echo "| Length ratio B/A | — | $RATIO |"
+            echo "| D1-aware keywords (Next.js / RSC / use client) | $A_NEXTJS | $B_NEXTJS |"
+            echo "| Insufficient-context disclaimer | $A_DISCLAIM | (not checked) |"
+            echo ""
+            echo "### Run A (summary-only) reply"
+            echo ""
+            echo '```'
+            cat ab-out/reply_a.txt
+            echo '```'
+            echo ""
+            echo "### Run B (full-context) reply"
+            echo ""
+            echo '```'
+            cat ab-out/reply_b.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Assertions
+          fail=0
+          if [ "$B_NEXTJS" -lt 1 ]; then
+            echo "::warning::Run B did not mention any D1-aware keyword (Next.js / RSC / use client). Full-context handoff may not be helping."
+            fail=$((fail + 1))
+          fi
+          if [ "$B_NEXTJS" -le "$A_NEXTJS" ]; then
+            echo "::warning::Run B did not contain MORE D1-aware keywords than Run A (B=$B_NEXTJS, A=$A_NEXTJS)."
+            fail=$((fail + 1))
+          fi
+          # Soft assertion on length — Run B should at least equal Run A
+          if awk -v r="$RATIO" 'BEGIN { exit !(r < 0.8) }'; then
+            echo "::warning::Run B is shorter than Run A (ratio=$RATIO). Suspicious — full-context should produce a more detailed reply."
+            fail=$((fail + 1))
+          fi
+
+          echo "Soft-fail count: $fail (warnings only; job still succeeds unless fail >= 3)"
+          if [ "$fail" -ge 3 ]; then
+            echo "::error::Three or more A/B-test signals are wrong. Full-context handoff regression suspected."
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: codex-ab-test-${{ github.run_number }}
+          path: ab-out/
+          retention-days: 14

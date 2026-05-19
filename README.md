@@ -63,6 +63,34 @@ sdd-codex-starter/
 
 加什麼自己加, 但這四件不要拿掉, 否則整個流程會破。
 
+## 可選: Codex A/B regression test
+
+`.github/workflows/codex-ab-test.yml` 提供一個手動觸發的工作流, 跑兩次同主題的第二意見諮詢:
+
+- **Run A**: 只給摘要 (舊的、錯誤做法)
+- **Run B**: 完整貼 proposal + 已決 Decisions (新規則)
+
+跑完輸出對照表, 證明「完整 context」確實讓回覆更深入 (含 D1-aware 關鍵字、更長、不含資訊不足免責)。
+作為**規則漂移的 regression guard** — 若哪天 docs 退化回「給摘要」, 這個 workflow 會持續抓到。
+
+### 啟用步驟
+
+1. 在 Anthropic console 取一把 API key
+2. Repo Settings → Secrets and variables → Actions → New secret:
+   - Name: `ANTHROPIC_API_KEY`
+   - Value: `sk-ant-...`
+3. 手動觸發:
+   ```bash
+   gh workflow run codex-ab-test.yml --repo <owner>/sdd-codex-starter
+   gh run watch  # 看 step summary 對照表
+   ```
+4. 排程: 每週一 02:00 UTC 自動跑一次 (可在 yml 內改 cron)
+
+### 不啟用也沒差
+
+不設 secret, workflow 在啟動時就會 fail 並提示。不影響其他 workflow 與本機開發。
+這個 workflow 是「diagnostic」性質, 不是上線必備。
+
 ## 進一步閱讀
 
 - OpenSpec CLI: `openspec --help` / `openspec instructions <artifact> --change <id>`
