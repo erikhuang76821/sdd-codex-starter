@@ -42,6 +42,7 @@ flowchart LR
 | proposal → Codex | grep `對抗性審查來源:` | AGENTS §3.1 §8.1 |
 | design → Codex | grep `第二意見來源:` | AGENTS §3.2 §8.2 |
 | spec → Codex | grep `完備性審查來源:` | AGENTS §3.3 §8.3 |
+| design output → 跨職能可讀 | grep 3 個分層描述 marker / Decision | AGENTS §3.5 |
 | design → spec | `openspec validate --strict` | AGENTS §1 §2 |
 | spec → tasks | grep `approved-by:` | AGENTS §7 |
 | tasks → commit | grep `→ verified by:` | AGENTS §6 |

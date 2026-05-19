@@ -172,6 +172,16 @@ check_phrase "docs/spec-writing.md" "[異常]" "error-scenario prefix mandate"
 # docs/task-writing.md anchors
 check_phrase "docs/task-writing.md" "→ verified by:" "task verified-by format"
 
+# docs/decision-writing.md anchors (AGENTS §3.5)
+check_phrase "docs/decision-writing.md" "**一句話**" "Decision marker 1"
+check_phrase "docs/decision-writing.md" "**對使用者 / 企劃看得見的影響**" "Decision marker 2"
+check_phrase "docs/decision-writing.md" "**為何不選**" "Decision marker 3"
+
+# reference example design.md — at least one D with all three markers
+check_phrase "examples/select-admin-frontend-stack/design.md" "**一句話**" "reference D1-D4 use layered description"
+check_phrase "examples/select-admin-frontend-stack/design.md" "**對使用者 / 企劃看得見的影響**" "reference layered marker 2"
+check_phrase "examples/select-admin-frontend-stack/design.md" "**為何不選**" "reference layered marker 3"
+
 # ---------------------------------------------------------------------------
 # Unit 5: openspec CLI must be available (informational; CI installs it)
 # ---------------------------------------------------------------------------
@@ -253,6 +263,27 @@ else
     fail "hook ACCEPTED design.md without 第二意見來源 (regression!)"
   fi
   mv design.md.bak openspec/changes/select-admin-frontend-stack/design.md
+
+  # Negative 1b: remove "**一句話**:" markers from design.md → expect fail (AGENTS §3.5)
+  design_file="openspec/changes/select-admin-frontend-stack/design.md"
+  cp "$design_file" design.md.bak
+  grep -v "^\*\*一句話\*\*:" design.md.bak > "$design_file"
+  if ! run_hook; then
+    pass "hook rejects design.md missing 一句話 marker on Decisions"
+  else
+    fail "hook ACCEPTED design.md missing 一句話 marker (regression!)"
+  fi
+  mv design.md.bak "$design_file"
+
+  # Negative 1c: remove "**為何不選**:" markers from design.md → expect fail (AGENTS §3.5)
+  cp "$design_file" design.md.bak
+  grep -v "^\*\*為何不選\*\*:" design.md.bak > "$design_file"
+  if ! run_hook; then
+    pass "hook rejects design.md missing 為何不選 marker on Decisions"
+  else
+    fail "hook ACCEPTED design.md missing 為何不選 marker (regression!)"
+  fi
+  mv design.md.bak "$design_file"
 
   # Negative 2: remove approved-by from spec.md → expect fail
   spec_file="openspec/changes/select-admin-frontend-stack/specs/admin-frontend-stack/spec.md"

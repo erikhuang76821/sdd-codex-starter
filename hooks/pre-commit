@@ -7,6 +7,9 @@
 #   2. Greps for the audit-trail rules:
 #        - proposal.md → must contain "對抗性審查來源:" (Codex audit trail §8.1)
 #        - design.md   → must contain "第二意見來源:"   (Codex audit trail §8.2)
+#                      → every '### D<n>.' Decision needs the 3-marker
+#                        layered description (AGENTS §3.5):
+#                          **一句話**: / **對使用者 / 企劃看得見的影響**: / **為何不選**:
 #        - spec.md     → must contain "完備性審查來源:" (Codex audit trail §8.3)
 #                        AND "approved-by:" or "approved-by: PENDING"
 #                        (Spec → Code gate, AGENTS §7)
@@ -89,6 +92,19 @@ for change in "${changes[@]}"; do
         fail=1
       fi
       check_vague_rationale "$change_dir/design.md" "第二意見來源"
+    fi
+
+    # 2c. design.md → 分層描述 3-marker (AGENTS §3.5)
+    # Each '### D<n>.' Decision MUST have the three required markers.
+    decision_count=$(grep -cE "^### D[0-9]+\." "$change_dir/design.md" || true)
+    if [ "$decision_count" -gt 0 ]; then
+      m1=$(grep -cE "^\*\*一句話\*\*:" "$change_dir/design.md" || true)
+      m2=$(grep -cE "^\*\*對使用者 / 企劃看得見的影響\*\*:" "$change_dir/design.md" || true)
+      m3=$(grep -cE "^\*\*為何不選\*\*:" "$change_dir/design.md" || true)
+      if [ "$m1" -lt "$decision_count" ] || [ "$m2" -lt "$decision_count" ] || [ "$m3" -lt "$decision_count" ]; then
+        echo "  ✗ design.md has $decision_count Decisions but only $m1/$m2/$m3 (一句話/影響/為何不選) markers — see AGENTS §3.5 + docs/decision-writing.md"
+        fail=1
+      fi
     fi
   fi
 

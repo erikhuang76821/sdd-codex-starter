@@ -79,6 +79,23 @@ jobs:
             echo "Codex audit trail present: $(grep '第二意見來源:' "$DESIGN")"
           fi
 
+      - name: Assert layered description on every Decision in design.md (AGENTS §3.5)
+        shell: bash
+        run: |
+          DESIGN=openspec/changes/select-admin-frontend-stack/design.md
+          DECISION_COUNT=$(grep -cE "^### D[0-9]+\." "$DESIGN" || true)
+          M1=$(grep -cE "^\*\*一句話\*\*:" "$DESIGN" || true)
+          M2=$(grep -cE "^\*\*對使用者 / 企劃看得見的影響\*\*:" "$DESIGN" || true)
+          M3=$(grep -cE "^\*\*為何不選\*\*:" "$DESIGN" || true)
+          echo "Decisions: $DECISION_COUNT"
+          echo "一句話: $M1  /  對使用者 / 企劃看得見的影響: $M2  /  為何不選: $M3"
+          if [ "$DECISION_COUNT" -gt 0 ]; then
+            if [ "$M1" -lt "$DECISION_COUNT" ] || [ "$M2" -lt "$DECISION_COUNT" ] || [ "$M3" -lt "$DECISION_COUNT" ]; then
+              echo "::error::Each '### D<n>.' Decision in $DESIGN MUST contain the three required markers (**一句話**: / **對使用者 / 企劃看得見的影響**: / **為何不選**:). See AGENTS §3.5 and docs/decision-writing.md."
+              exit 1
+            fi
+          fi
+
       - name: Assert completeness-review audit trail in spec.md (AGENTS §8.3)
         shell: bash
         run: |
