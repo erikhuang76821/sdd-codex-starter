@@ -70,6 +70,15 @@ ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-co
 觸發信號定義在 [`AGENTS.md`](AGENTS.md) §0; AI 進到 repo 後讀 AGENTS.md 自動執行,
 你只負責 spec 階段加 `<!-- approved-by: -->` 與審 Codex 的第二意見內容。
 
+### Claude Code 的自動載入
+
+Claude Code 進到工作目錄會**自動讀 `CLAUDE.md`**(不會自動讀 `AGENTS.md`)。
+本 starter 內 [`CLAUDE.md`](CLAUDE.md) 是 35 行的薄重定向, 內容是「→ 讀 AGENTS.md」+ 觸發條件精簡版 + toy/demo 不可降級提醒, 確保 Claude Code 用戶不必手動 prompt「請讀 AGENTS.md」也能正確啟動 SDD。
+
+其他 AI agent (Cursor / Aider / Continue 等) 用各自慣例:
+- Cursor → `.cursor/rules` 或 `.cursorrules` (可自行加上 `→ 讀 AGENTS.md` 的 stub)
+- Codex CLI / Aider → 通常會主動掃 `AGENTS.md`
+
 ## 結構
 
 | 路徑 | 用途 |
