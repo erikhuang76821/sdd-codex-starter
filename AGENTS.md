@@ -110,6 +110,7 @@ Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看
 - 呼叫前 MUST 在 AI 自己的文字輸出一行宣告「呼叫 codex 輔助分析中...」(或等價語句), 給使用者 CLI 視覺結構
 - 諮詢路徑 MUST 走本機 AI 工具 + 使用者 ChatGPT OAuth session, 不得設 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` secret 走雲端 API 模擬 Codex
 - Claude Code 環境下 MUST 帶 `--fresh` 跳過 task-resume helper, 除非使用者明示要 resume 既有 thread
+- **Codex 呼叫失敗時 MUST 停止 design 流程**, 引述完整錯誤訊息給使用者, 指明修復路徑 (例: `/codex:setup`), 不得當「使用者沒設定 codex」自己跳過繼續寫 Decisions。修復前 design 階段冰封。Fallback SOP 見 [docs/codex-handoff.md「Codex 不可用時」](docs/codex-handoff.md)
 - 在 auto / yolo 模式這些規則是唯一保險, 沒人會在當下提醒
 
 ## 4. Codex 回覆呈現格式

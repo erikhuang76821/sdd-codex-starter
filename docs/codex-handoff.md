@@ -142,6 +142,42 @@ do not ask whether to continue.」
 3. **不要照抄**, 要在每個 Decision 加上「為何接受/不接受 codex 的建議」
 4. **衝突時**: codex 與你的判斷不同, 明確記下兩方理由與最終選擇, 不要默默忽略
 
+## Codex 不可用時 (Fallback SOP)
+
+當 codex:rescue subagent 回覆失敗訊息或拋錯時, 不得當作「使用者沒設定 codex」
+就跳過諮詢。MUST 停止 design 流程, 直到使用者修好。
+
+### 常見失敗訊號
+
+| 訊號 (subagent 回覆關鍵字) | 原因 | 修復路徑 |
+|---|---|---|
+| `unauthenticated` / `not logged in` / `OAuth expired` | ChatGPT OAuth session 過期 | `/codex:setup` (重新登入 ChatGPT) |
+| `Codex CLI not found` / `command not found` / `missing` | codex 插件損壞或未安裝 | `/codex:setup` 或重裝 codex plugin |
+| `subscription required` / `not entitled` | ChatGPT 訂閱被取消 | 使用者需重新訂閱, 或在 audit trail 寫「無 (理由: 訂閱已取消)」並接受沒第二意見 |
+| `rate limit` / `too many requests` / `429` | 用量上限 | 等候或升級訂閱 |
+| `network error` / `timeout` / `connection refused` | 網路問題 | 檢查網路 |
+| 任何其他非預期錯誤 | 未知 | 引述完整錯誤訊息給使用者, 不得自己揣測 |
+
+### SOP
+
+1. **STOP** — design.md 不得繼續寫 Decisions, 不得進 spec 階段
+2. **引述完整 subagent 回覆** 給使用者, 用 `[`output-formatting.md`](output-formatting.md)` 的視覺區塊呈現
+3. **指明修復路徑** — 對應上表的「修復路徑」欄
+4. **等使用者回覆「修好了」/「重試」**, 才重新呼叫 codex
+5. 若使用者選擇放棄諮詢 (例如 ChatGPT 訂閱取消), MUST 在 design.md audit trail 寫:
+   ```
+   第二意見來源: 無 (理由: Codex 不可用 — <一句具體原因>, 使用者選擇繼續)
+   ```
+   - 不接受 `無 (理由: Codex 失敗)` 這種模糊寫法 — 必須寫具體原因 (auth 過期 / 訂閱取消 / 網路 / 等)
+
+### 禁止行為
+
+- ❌ **跳過 codex 自己決定** — 即使任務急, 也要先 stop 與使用者溝通; 不可悄悄繼續寫 Decisions
+- ❌ **「使用者沒設定 codex 那就跳過吧」** — 設定問題是 fixable, 不是不可用; SOP 是「stop + 指引修復」, 不是「降級流程」
+- ❌ **重試 N 次 (`>3`) 後直接繼續** — 重試耗盡仍 stop, 不是 fallback to skip
+- ❌ **改寫 codex 失敗訊息** — MUST 原文引述, 讓使用者看到工具實際說了什麼, 才能對症處理
+- ❌ **`第二意見來源: 無 (理由: Codex 失敗)`** — 模糊理由不合格, 須寫具體 (見上方 audit trail 範例)
+
 ## 反模式
 
 - ❌ **只給摘要, 不貼完整 proposal** → codex 在資訊不對等下作答; 回覆會附「proposal 在沙箱無法讀取」之類的免責, 喪失第二意見價值
