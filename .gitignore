@@ -1,0 +1,24 @@
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node (in case this starter is dropped into a JS project)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env / secrets
+.env
+.env.local
+.env.*.local
+
+# OpenSpec local scratch
+openspec/.cache/
