@@ -1,5 +1,8 @@
 # sdd-codex-starter
 
+[![validate-openspec](https://github.com/erikhuang76821/sdd-codex-starter/actions/workflows/validate.yml/badge.svg)](https://github.com/erikhuang76821/sdd-codex-starter/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 把 **Spec-Driven Development (OpenSpec)** 與 **Codex 第二意見介入** 兩件事
 封裝成一份「拷到任何專案就能跑」的最低底線骨架。
 

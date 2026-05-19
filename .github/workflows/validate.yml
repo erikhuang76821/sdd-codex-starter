@@ -1,0 +1,49 @@
+name: validate-openspec
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: openspec validate --strict
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenSpec CLI
+        run: npm install -g @fission-ai/openspec
+
+      - name: Show OpenSpec version
+        run: openspec --version
+
+      - name: Stage reference change into openspec/changes
+        run: cp -r examples/select-admin-frontend-stack openspec/changes/
+
+      - name: Validate reference change (strict)
+        run: openspec validate select-admin-frontend-stack --strict
+
+      - name: Show status
+        run: openspec status --change select-admin-frontend-stack
+
+      - name: Assert error-path scenario coverage
+        shell: bash
+        run: |
+          SPEC=openspec/changes/select-admin-frontend-stack/specs/admin-frontend-stack/spec.md
+          REQ_COUNT=$(grep -c "^### Requirement:" "$SPEC")
+          ERR_COUNT=$(grep -c "^#### Scenario: \[異常\]" "$SPEC")
+          echo "Requirements: $REQ_COUNT"
+          echo "Error-path scenarios: $ERR_COUNT"
+          if [ "$ERR_COUNT" -lt "$REQ_COUNT" ]; then
+            echo "::error::Each Requirement MUST have at least one [異常] error-path scenario. Got $ERR_COUNT errors for $REQ_COUNT requirements."
+            exit 1
+          fi
