@@ -88,8 +88,10 @@ Claude Code 進到工作目錄會**自動讀 `CLAUDE.md`**(不會自動讀 `AGEN
 | [`docs/task-writing.md`](docs/task-writing.md) | 獨立可驗證 task 規則 |
 | [`docs/codex-handoff.md`](docs/codex-handoff.md) | Codex 觸發時機 + 完整 context 模板 |
 | [`docs/output-formatting.md`](docs/output-formatting.md) | Codex 回覆視覺區塊格式 |
+| [`docs/testing.md`](docs/testing.md) | 怎麼跑 starter 自驗 + 加新測試 |
 | [`hooks/`](hooks/) | 本機 `pre-commit` + 安裝指南 |
-| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 4 個結構 grep |
+| [`scripts/test.sh`](scripts/test.sh) | 46 條單元 + 整合測試 (本機 / CI 共用) |
+| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 4 個結構 grep + 跑 scripts/test.sh |
 | [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/) | 完整 reference change (strict validate 通過) |
 | `openspec/changes/archive/`, `openspec/specs/` | 空骨架, `openspec` CLI 預期路徑 |
 

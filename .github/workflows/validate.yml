@@ -93,3 +93,12 @@ jobs:
             grep -nE "^- \[[ x]\] " "$TASKS" | grep -vE "→ verified by:" || true
             exit 1
           fi
+
+      - name: Run starter unit + integration tests (scripts/test.sh)
+        shell: bash
+        run: |
+          # Unstage the reference change first so test.sh's bootstrap test
+          # starts from a clean state (it re-stages internally).
+          rm -rf openspec/changes/select-admin-frontend-stack
+          chmod +x scripts/test.sh
+          bash scripts/test.sh
