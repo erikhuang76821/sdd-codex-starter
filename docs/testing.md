@@ -11,7 +11,7 @@ bash scripts/test.sh
 
 回傳 0 = 全綠, 非 0 = 至少一條 fail (每條 fail 在 stdout 有具體訊息)。
 
-預設約 **55 條測試**, 跑完約 15-30 秒 (含 fresh-bootstrap 那段較慢)。
+預設約 **62 條測試**, 跑完約 15-30 秒 (含 fresh-bootstrap 那段較慢)。
 
 ## 測試內容
 
@@ -30,7 +30,7 @@ bash scripts/test.sh
 | # | 名稱 | 守什麼 |
 |---|---|---|
 | 1 | Reference example strict validate | `examples/select-admin-frontend-stack/` 永遠應 strict-validate 通過 |
-| 2 | Hook negative tests | 故意壞 proposal / design / spec / tasks 餵給 `hooks/pre-commit`, **必須**被拒 — 5 個 negative case |
+| 2 | Hook negative tests | 故意壞 proposal / design / spec / tasks 餵給 `hooks/pre-commit`, **必須**被拒 — 7 個 negative case |
 | 3 | Fresh-project bootstrap | 把整個 starter 拷到 tmp dir 跑 `openspec new change`, 確認新使用者上手流暢 |
 
 ## CI 跑同一份

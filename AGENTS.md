@@ -144,6 +144,21 @@ Codex 介入分**三種角色**, 對應三個 SDD 階段:
 - **Codex 呼叫失敗時 MUST 停止對應階段流程**, 引述完整錯誤訊息給使用者, 指明修復路徑 (例: `/codex:setup`), 不得當「使用者沒設定 codex」自己跳過繼續寫下一段。修復前該階段冰封。Fallback SOP 見 [docs/codex-handoff.md「Codex 不可用時」](docs/codex-handoff.md)
 - 在 auto / yolo 模式這些規則是唯一保險, 沒人會在當下提醒
 
+### 3.5 design.md Decision output 必須分層描述 (跨職能可讀性)
+
+**寫 design.md 的 `### D<n>.` 區段前 MUST 開** [`docs/decision-writing.md`](docs/decision-writing.md)。
+完整 4-marker 規範 + 範例 + 反模式不重貼於此。
+
+不可違反的停止條件:
+
+- 每個 `### D<n>.` Decision MUST 含**三個強制 marker** (順序固定):
+  1. `**一句話**: ...` (給非技術讀者複述, 一行)
+  2. `**對使用者 / 企劃看得見的影響**:` (條列, 量化優先)
+  3. `**為何不選**:` (條列, 用業務語言, 不只是工程理由)
+- **第 4 個 marker** `**技術層理由 (給工程 review)**:` 可選 — 推薦但不強制
+- 三個強制 marker 缺一就 CI fail
+- 設計理由: design.md 表面是工程文件, 但企劃會在 Open Questions / Risks / Migration 來回審。沒有業務語言的「選項建議回寫」對非工程角色等於空白, 失去跨職能 review 的機會
+
 ## 4. Codex 回覆呈現格式
 
 **收到 Codex 回覆時 MUST 開** [`docs/output-formatting.md`](docs/output-formatting.md)。
@@ -249,7 +264,7 @@ Codex 介入分**三種角色**, 對應三個 SDD 階段:
 
 ## 10. 自動化的邊界 (CI 抓不到什麼)
 
-CI grep 守 7 個結構性規則 (strict validate / 異常 scenario 覆蓋率 / 對抗性審查來源 / 第二意見來源 / 完備性審查來源 / approved-by / verified-by), 但**抓不到品質性問題**:
+CI grep 守 8 個結構性規則 (strict validate / 異常 scenario 覆蓋率 / 對抗性審查來源 / 第二意見來源 / 完備性審查來源 / 分層描述 3-marker / approved-by / verified-by), 但**抓不到品質性問題**:
 
 - ✗ 抓不到「task 寫了 `→ verified by:` 但實際不可獨立執行」 (例: `- [ ] 完成所有功能 → verified by: 無 (理由: 整體驗收)`)
 - ✗ 抓不到「Codex 收到的 prompt 真的有貼完整 proposal」 (只能 grep audit trail 一行)

@@ -52,6 +52,9 @@ grep -c "^### Requirement:" path/to/spec.md
 grep -c "^#### Scenario: \[異常\]" path/to/spec.md
 grep "對抗性審查來源:" path/to/proposal.md
 grep "第二意見來源:" path/to/design.md
+grep -cE "^### D[0-9]+\." path/to/design.md
+grep -cE "^\*\*一句話\*\*:" path/to/design.md
+grep -cE "^\*\*為何不選\*\*:" path/to/design.md
 grep "完備性審查來源:" path/to/spec.md
 grep "approved-by:" path/to/spec.md
 grep -cE "^- \[[ x]\] .*→ verified by:" path/to/tasks.md
