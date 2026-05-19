@@ -121,87 +121,99 @@ design 已決的技術選型 (例如「狀態管理 = Redux Toolkit」「BFF 層
 
 ## Prompt 模板
 
+三個模板採 **English skeleton + 原文 context + reply in 繁體中文** 的 hybrid 寫法。理由見本檔末段「為何模板用英文骨架」。
+
 ### 模板 A — proposal 對抗性審查 (`/codex:adversarial-review proposal.md`)
 
 ```
-你是 SDD 提案的對抗性審查員。下面是完整 proposal, 讀完後給壓力測試意見。
+You are an adversarial reviewer for an SDD proposal. Read the full proposal below, then push back hard — your job is to find weaknesses, not to validate.
 
-## Context: 完整 proposal
+## Context: Full proposal (原文保留, do not translate)
 
 <從 openspec/changes/<id>/proposal.md 全文貼進來, 不省略>
 
-## 審查焦點
+## Review focus
 
-請對以下四面向各給 1-2 條對抗性意見 (找弱點, 不是肯定):
+For each of the four dimensions, give 1-2 adversarial points (weaknesses, not validations):
 
-1. **Why 是否站得住腳** — 痛點是否被誇大? 是否還有更便宜的非工程解法 (流程 / 教育訓練 / 既有工具)?
-2. **What Changes 是否抓對範圍** — 是否漏了關鍵變動? 是否塞了不必要的範圍?
-3. **Capabilities 切分是否合理** — 新 capability vs modified capability 邊界對嗎? 是否有重複或漏項?
-4. **Impact / 風險評估是否誠實** — 最大的兩個被低估的風險是什麼? Mitigation 是否實際可行?
+1. **Is the "Why" defensible?** — Is the pain overstated? Are there cheaper non-engineering options (process / training / existing tooling)?
+2. **Does "What Changes" scope correctly?** — Critical changes missing? Unnecessary scope creep?
+3. **Are "Capabilities" sliced sensibly?** — Is the new-vs-modified boundary right? Any overlap or gaps?
+4. **Is "Impact / risk" honest?** — Top two under-estimated risks? Are mitigations actually feasible?
 
-體裁: 條列, 每點一句結論 + 一句理由, 不寫 essay, 全段不超過 250 字。
-這份審查會直接寫進對應 proposal.md 的 audit trail, 並可能觸發 proposal 內容修訂。
+Format: bulleted, one-sentence conclusion + one-sentence reason per point. No essays. Total under 250 字.
+
+**Reply in 繁體中文.** This review will be written directly into the audit trail of proposal.md and may trigger proposal revisions.
 ```
 
 ### 模板 B — design 技術第二意見 (`/codex:review design.md`)
 
 ```
-你是技術選型第二意見。下面是完整脈絡, 讀完後給對抗性意見。
+You are a technical second-opinion reviewer for an SDD design decision. Read the full context below, then push back on the proposed choice.
 
-## Context: 完整 proposal
+## Context: Full proposal (原文保留, do not translate)
 
 <從 openspec/changes/<id>/proposal.md 全文貼進來, 不省略>
 
-## Context: 已決定的 Decisions
+## Context: Decisions already committed (原文保留)
 
 <從 openspec/changes/<id>/design.md 的 ## Decisions 區貼進來,
  只貼當前題目以前已 commit 的 Decision; 若這是第一個 Decision, 寫「(本題為首個決策)」>
 
-## 當前題目
+## Current question
 
-我們要在這個 change 內決定 <主題>。候選: A / B / C / D。
+We need to decide <主題> in this change. Candidates: A / B / C / D.
+Scenario: <場景一句話>.
 
-請以「<場景一句話>」場景給出:
+Provide:
 
-1. 推薦選項 + 兩個明確不選的 elimination
-2. 配套子決策各推薦一個 (若有)
-3. 最大的兩個踩雷風險 + mitigation
+1. Recommended option + two explicit eliminations
+2. One recommendation for each sub-decision (if any)
+3. Top two failure-mode risks + mitigations
 
-體裁: 條列, 不寫 essay, 不超過 200 字。
-這個第二意見會直接寫進 openspec design.md 的 Decisions 區域。
+Format: bulleted, no essays, under 200 字 total.
+
+**Reply in 繁體中文.** This second opinion will be written directly into the Decisions section of design.md.
 ```
 
 ### 模板 C — spec 完備性審查 (`/codex:review spec.md`)
 
 ```
-你是 SDD spec 的完備性審查員。下面是完整 spec 與相關 design Decisions,
-讀完後檢查 Requirements 與 scenario 是否完備。
+You are a completeness reviewer for an SDD spec. Read the full spec and the related design Decisions below, then check whether Requirements and scenarios are complete.
 
-## Context: 完整 spec
+## Context: Full spec (原文保留, do not translate)
 
 <從 openspec/changes/<id>/specs/<capability>/spec.md 全文貼進來, 不省略>
 
-## Context: 對應 design Decisions
+## Context: Related design Decisions (原文保留)
 
 <從 openspec/changes/<id>/design.md 的 ## Decisions 區全文貼進來,
  讓 codex 看見已決技術選型的約束>
 
-## 完備性檢查清單
+## Completeness checklist
 
-請逐條檢查並列出**找到的漏洞**, 沒漏洞的條目直接跳過, 不要寫「OK」:
+Walk through each item below and list **only the gaps you find** — skip items with no issue (do not write "OK"):
 
-1. **每個 Requirement 是否至少 1 happy + 1 `[異常]` scenario?**
-2. **異常路徑是否覆蓋 4 類 (上游失敗 / 認證權限 / 資料缺失 / 重試耗盡降級)?**
-   挑出只覆蓋一類交差的 Requirement。
-3. **error scenario 是否寫「對使用者的可觀察影響」?**
-   挑出只寫「系統 log 錯誤」「記錄事件」這類內部行為的條目。
-4. **是否漏寫使用者實際會撞到但 happy path 想不到的情境?**
-   例: race condition / 超時 / 部分成功 / 跨 tab 競爭 / 退回上一步狀態回填 等。
-5. **是否有 scenario 用 WHEN 描述異常觸發 (應該用 IF)?**
+1. **Does each Requirement have ≥ 1 happy + 1 `[異常]` scenario?**
+2. **Do `[異常]` scenarios cover all four classes (upstream failure / auth-permission / missing-or-invalid data / retry exhaustion + degradation)?**
+   Call out Requirements that only cover one class.
+3. **Do error scenarios describe "user-observable impact"?**
+   Flag scenarios that only say "system logs error" or "record event" — that's internal behaviour, not acceptance criteria.
+4. **Any user-reachable scenarios that happy-path thinking misses?**
+   Examples: race condition / timeout / partial success / cross-tab contention / back-button state restore.
+5. **Any scenario using WHEN to describe an unwanted event (should be IF)?**
 
-體裁: 條列, 每點一句說「哪個 Requirement / Scenario 漏了什麼」, 不寫 essay, 全段不超過 300 字。
-這份審查會直接寫進對應 spec.md 的 audit trail, 並 MUST 觸發 spec 內容修訂 (不只記 audit, spec 內容也要補)。
+Format: bulleted; one sentence per gap saying "which Requirement / Scenario is missing what". No essays. Total under 300 字.
+
+**Reply in 繁體中文.** This review will be written into the audit trail of spec.md AND MUST trigger spec content revision — recording the audit alone is not acceptable; the spec body itself must be updated.
 ```
+
+### 為何模板用英文骨架
+
+- **指令動詞服從度**: `MUST / push back / call out / flag` 等英文指令動詞觸發更穩定的 reasoning 路徑, 比「必須 / 反駁 / 挑出」效果略好 (RFC2119 訓練 priors)
+- **Token 省約 30-50%**: 三個模板從約 600 字中文 → 約 300 字英文骨架 + 原文 context 不變; 一個 change × 3 階段審查累計省 ~300-600 token (Opus 1M 下可忽略, 32K 下有感)
+- **Context 段不翻譯**: proposal / design / spec 全文原本就是中文寫的, 保持原文避免「翻譯漂移」+「對著翻譯版找漏」的二度誤差
+- **Reply in 繁體中文** 是明示要求: 不指定的話 codex 可能依 prompt 語言回英文, 不利後續寫進中文 audit trail
 
 ## 收到回覆後的處理
 
