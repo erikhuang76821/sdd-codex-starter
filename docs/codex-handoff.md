@@ -147,24 +147,73 @@ do not ask whether to continue.」
 當 codex:rescue subagent 回覆失敗訊息或拋錯時, 不得當作「使用者沒設定 codex」
 就跳過諮詢。MUST 停止 design 流程, 直到使用者修好。
 
-### 常見失敗訊號
+### 自我診斷工具
 
-| 訊號 (subagent 回覆關鍵字) | 原因 | 修復路徑 |
+讓使用者跑下面這個指令拿結構化狀態, 立刻定位問題:
+
+```bash
+node "$HOME/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs" setup --json
+# Windows: C:\Users\<user>\.claude\plugins\cache\openai-codex\codex\<version>\scripts\codex-companion.mjs
+```
+
+或在 Claude Code 內直接跑 `/codex:setup` slash command (等價包裝)。
+
+#### Happy path 範例
+
+```json
+{
+  "ready": true,
+  "node":  { "available": true, "detail": "v24.x.x" },
+  "npm":   { "available": true, "detail": "11.x.x" },
+  "codex": { "available": true, "detail": "codex-cli 0.130.x; advanced runtime available" },
+  "auth":  { "available": true, "loggedIn": true, "detail": "ChatGPT login active for <email>" }
+}
+```
+
+`ready` = `node.available && codex.available && auth.loggedIn` 的 AND。
+**只要 `ready: false`, 看哪一段是 false 就知道修哪裡**:
+
+- `node.available: false` → 沒裝 Node.js
+- `codex.available: false` → 沒裝 codex CLI 或 advanced runtime 不可用 (見下一節 keyword `is not installed`)
+- `auth.loggedIn: false` → ChatGPT 沒登入或過期 (見下一節 keyword `not authenticated` / `requires OpenAI authentication`)
+
+### 失敗訊號分兩層
+
+#### Setup 層 (codex-companion 自身狀態)
+
+訊號出處: `setup --json` 的 `auth.detail` / `codex.detail` 欄位, 或 task 命令拋的 Error.message。
+**訊息是 codex-companion 主動寫的, keyword 固定**:
+
+| 真實訊息片段 (源碼) | 原因 | 修復路徑 |
 |---|---|---|
-| `unauthenticated` / `not logged in` / `OAuth expired` | ChatGPT OAuth session 過期 | `/codex:setup` (重新登入 ChatGPT) |
-| `Codex CLI not found` / `command not found` / `missing` | codex 插件損壞或未安裝 | `/codex:setup` 或重裝 codex plugin |
-| `subscription required` / `not entitled` | ChatGPT 訂閱被取消 | 使用者需重新訂閱, 或在 audit trail 寫「無 (理由: 訂閱已取消)」並接受沒第二意見 |
-| `rate limit` / `too many requests` / `429` | 用量上限 | 等候或升級訂閱 |
-| `network error` / `timeout` / `connection refused` | 網路問題 | 檢查網路 |
-| 任何其他非預期錯誤 | 未知 | 引述完整錯誤訊息給使用者, 不得自己揣測 |
+| `"not authenticated"` (auth.detail default) | 從未登入或登入狀態被清掉 | `/codex:setup` (重新登入 ChatGPT) |
+| `"requires OpenAI authentication"` (auth.detail) | provider 需 OAuth 但未登入 / token 過期 | `/codex:setup` (重新登入 ChatGPT) |
+| `"Codex CLI is not installed or is missing required runtime support"` | codex CLI 沒裝或 advanced runtime 不可用 | `npm install -g @openai/codex` 然後 `/codex:setup` |
+| `"advanced runtime unavailable: <reason>"` (codex.detail) | codex CLI 在但 app-server 跑不起來 | 同上, 或檢查 reason 訊息 |
+| `error.message` 含 `ENOENT` / `ECONNREFUSED` | 找不到執行檔 / 連不上 codex broker | 重啟 codex / 檢查環境 |
+
+#### Task 層 (codex 呼叫 OpenAI API 的失敗)
+
+訊號出處: codex 把 prompt 送到 OpenAI 之後 API 回的錯誤。
+**訊息來自 OpenAI API, keyword 不固定**, 常見可能模式 (推測, 視 API 回應):
+
+| 可能訊號 | 原因 | 修復路徑 |
+|---|---|---|
+| `rate limit` / `429` / `too many requests` | 用量上限 | 等候或升級訂閱 |
+| `subscription` / `quota exceeded` / `not entitled` | 訂閱問題或月度配額用完 | 重新訂閱 / 等月底 |
+| `network` / `timeout` / `ECONNRESET` | 網路不穩 | 檢查網路重試 |
+
+由於 task 層訊息**不是 codex-companion 寫的**, 不要硬比對 keyword。
+原則: **原文引述給使用者, 並提示「這看起來像 task 層 API 問題, 跑 setup --json 確認 codex 自身仍 ready, 然後重試」**。
 
 ### SOP
 
 1. **STOP** — design.md 不得繼續寫 Decisions, 不得進 spec 階段
-2. **引述完整 subagent 回覆** 給使用者, 用 `[`output-formatting.md`](output-formatting.md)` 的視覺區塊呈現
-3. **指明修復路徑** — 對應上表的「修復路徑」欄
-4. **等使用者回覆「修好了」/「重試」**, 才重新呼叫 codex
-5. 若使用者選擇放棄諮詢 (例如 ChatGPT 訂閱取消), MUST 在 design.md audit trail 寫:
+2. **引述完整 subagent 回覆** 給使用者, 用 [`output-formatting.md`](output-formatting.md) 的視覺區塊呈現
+3. **分類失敗** — 訊息含「自我診斷工具」範例的 setup 層 keyword? 還是 task 層 (rate limit / network)?
+4. **指明修復路徑** — 對應失敗訊號表; 不確定時請使用者跑 `setup --json` 自我診斷
+5. **等使用者回覆「修好了」/「重試」**, 才重新呼叫 codex
+6. 若使用者選擇放棄諮詢 (例如 ChatGPT 訂閱取消), MUST 在 design.md audit trail 寫:
    ```
    第二意見來源: 無 (理由: Codex 不可用 — <一句具體原因>, 使用者選擇繼續)
    ```
@@ -177,6 +226,7 @@ do not ask whether to continue.」
 - ❌ **重試 N 次 (`>3`) 後直接繼續** — 重試耗盡仍 stop, 不是 fallback to skip
 - ❌ **改寫 codex 失敗訊息** — MUST 原文引述, 讓使用者看到工具實際說了什麼, 才能對症處理
 - ❌ **`第二意見來源: 無 (理由: Codex 失敗)`** — 模糊理由不合格, 須寫具體 (見上方 audit trail 範例)
+- ❌ **看到任何錯誤就直接套「rate limit / 訂閱問題」** — task 層 keyword 不固定, 要原文引述, 不要替使用者揣測
 
 ## 反模式
 
