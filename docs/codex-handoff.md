@@ -28,6 +28,55 @@ Codex 跑在**完全獨立的對話 context**, 沒有 Claude 主對話的歷史,
 但這也意味著: **Claude MUST 主動把所有相關脈絡塞進 prompt**, 否則 codex 是在
 資訊不對等下作答。
 
+## 諮詢路徑限制 (硬性)
+
+Codex 諮詢 MUST 限定在「本機 AI 工具 + 使用者已 auth 的 ChatGPT OAuth session」這條路徑。
+
+**禁止做法:**
+
+- ❌ 在 GitHub Actions / 任何雲端 CI 加 step 直接呼叫 Anthropic / OpenAI API 模擬 Codex
+- ❌ 要求使用者設定 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` 等 secret
+- ❌ 任何「定期 LLM regression test」用 API token 計費的設計
+
+**為什麼:**
+
+使用者通常已用 ChatGPT 訂閱付費, 本機 Codex 呼叫不需額外帳單。API key 是不同
+billing model + 多了 secret rotation surface, 對個人 / 小團隊專案無 ROI。
+規則退化偵測應該用 deterministic grep against 規則文件本身, 不打 LLM API。
+
+## 呼叫前置 (CLI 視覺結構)
+
+呼叫 codex 之前, MUST 在 AI 自己的文字輸出**單獨一行**:
+
+```
+呼叫 codex 輔助分析中...
+```
+
+(或等價語句, 例如「Codex 第二意見諮詢中...」「叫 codex 給對抗性意見...」)
+
+目的: 讓使用者在 CLI 上看到接下來的 tool call 時, 立刻知道是 codex 諮詢,
+不是其他工具呼叫。**這條規則對任何 AI agent 環境通用**。
+
+### Claude Code 環境特定
+
+在 Claude Code + `codex:codex-rescue` subagent 環境下, 另外:
+
+- **不要先跑** `codex-companion.mjs task-resume-candidate --json` helper
+  (該 helper 對 fresh session 永遠回 `available: false`, 對使用者是純 CLI 干擾)
+- **不要用 AskUserQuestion 問** "Continue current thread / Start new thread"
+  (codex skill 預設行為, 但每次都要選新 thread 很煩)
+- 直接呼叫 `Agent(subagent_type="codex:codex-rescue", prompt="...")`,
+  並在 prompt 開頭加 `--fresh` token
+
+codex skill instruction 明文支援這個繞過: 「If the request includes `--fresh`,
+do not ask whether to continue.」
+
+### 例外: 延續性意圖
+
+若使用者明確說「接續上次 codex 討論」「resume codex thread」「continue codex」,
+改帶 `--resume` 而非 `--fresh`。此時保留 helper 與詢問流程 (codex skill 預設行為),
+因為 user 需要選擇要 resume 哪個 thread。
+
 ## 完整 Context 傳遞 (硬性要求)
 
 呼叫 codex 時, prompt MUST 包含下列三段, 一段都不能省:

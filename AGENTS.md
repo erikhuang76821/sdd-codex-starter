@@ -99,7 +99,10 @@ Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看
 不可違反的停止條件:
 
 - 呼叫 codex 的 prompt MUST 包含 proposal.md 全文 + 已決 Decisions 全文, 不得只給摘要
-- 在 auto / yolo 模式這條規則是唯一保險, 沒人會在當下提醒貼脈絡
+- 呼叫前 MUST 在 AI 自己的文字輸出一行宣告「呼叫 codex 輔助分析中...」(或等價語句), 給使用者 CLI 視覺結構
+- 諮詢路徑 MUST 走本機 AI 工具 + 使用者 ChatGPT OAuth session, 不得設 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` secret 走雲端 API 模擬 Codex
+- Claude Code 環境下 MUST 帶 `--fresh` 跳過 task-resume helper, 除非使用者明示要 resume 既有 thread
+- 在 auto / yolo 模式這些規則是唯一保險, 沒人會在當下提醒
 
 ## 4. Codex 回覆呈現格式
 
