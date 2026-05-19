@@ -48,22 +48,53 @@ jobs:
             exit 1
           fi
 
-      - name: Assert Codex audit trail in design.md (AGENTS §8)
+      - name: Assert adversarial-review audit trail in proposal.md (AGENTS §8.1)
+        shell: bash
+        run: |
+          PROPOSAL=openspec/changes/select-admin-frontend-stack/proposal.md
+          if ! grep -q "對抗性審查來源:" "$PROPOSAL"; then
+            echo "::error::$PROPOSAL lacks '對抗性審查來源:' line. Required by AGENTS §8.1 (proposal adversarial-review audit trail)."
+            exit 1
+          fi
+          if grep -qE "對抗性審查來源: *無 *\(理由: *(不需要|N/A|無)? *\)" "$PROPOSAL"; then
+            echo "::error::Vague rationale for skipping adversarial review. Be specific about why Codex was not consulted on the proposal."
+            exit 1
+          fi
+          echo "Adversarial-review audit trail present: $(grep '對抗性審查來源:' "$PROPOSAL")"
+
+      - name: Assert Codex audit trail in design.md (AGENTS §8.2)
         shell: bash
         run: |
           DESIGN=openspec/changes/select-admin-frontend-stack/design.md
           if grep -q "^## Decisions" "$DESIGN"; then
             if ! grep -q "第二意見來源:" "$DESIGN"; then
-              echo "::error::$DESIGN has '## Decisions' but lacks '第二意見來源:' line. Required by AGENTS §8 (Codex audit trail)."
+              echo "::error::$DESIGN has '## Decisions' but lacks '第二意見來源:' line. Required by AGENTS §8.2 (Codex audit trail)."
               exit 1
             fi
             # Reject the empty rationale form
-            if grep -qE "第二意見來源: *無 *\(理由: *(不需要|N/A|無) *\)" "$DESIGN"; then
+            if grep -qE "第二意見來源: *無 *\(理由: *(不需要|N/A|無)? *\)" "$DESIGN"; then
               echo "::error::Vague rationale for skipping second opinion. Be specific about why Codex was not consulted."
               exit 1
             fi
             echo "Codex audit trail present: $(grep '第二意見來源:' "$DESIGN")"
           fi
+
+      - name: Assert completeness-review audit trail in spec.md (AGENTS §8.3)
+        shell: bash
+        run: |
+          fail=0
+          while IFS= read -r spec; do
+            if ! grep -q "完備性審查來源:" "$spec"; then
+              echo "::error::$spec lacks '完備性審查來源:' line. Required by AGENTS §8.3 (spec completeness-review audit trail)."
+              fail=1
+            elif grep -qE "完備性審查來源: *無 *\(理由: *(不需要|N/A|無)? *\)" "$spec"; then
+              echo "::error::$spec has vague '完備性審查來源: 無 (理由: ...)' — must be specific."
+              fail=1
+            else
+              echo "Completeness-review audit trail present in $spec: $(grep -m1 '完備性審查來源:' "$spec")"
+            fi
+          done < <(find openspec/changes/select-admin-frontend-stack/specs -name "spec.md")
+          exit $fail
 
       - name: Assert approved-by on specs (AGENTS §7)
         shell: bash

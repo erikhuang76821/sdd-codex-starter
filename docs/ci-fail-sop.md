@@ -50,7 +50,9 @@ openspec validate <change-id> --strict
 # 跑跟 CI 一樣的 grep
 grep -c "^### Requirement:" path/to/spec.md
 grep -c "^#### Scenario: \[異常\]" path/to/spec.md
+grep "對抗性審查來源:" path/to/proposal.md
 grep "第二意見來源:" path/to/design.md
+grep "完備性審查來源:" path/to/spec.md
 grep "approved-by:" path/to/spec.md
 grep -cE "^- \[[ x]\] .*→ verified by:" path/to/tasks.md
 ```

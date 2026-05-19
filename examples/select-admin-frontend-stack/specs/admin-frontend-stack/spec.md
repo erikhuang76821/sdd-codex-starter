@@ -1,5 +1,6 @@
 <!-- approved-by: erikhuang 2026-05-19
      notes: pilot 範例 spec, 用於 sdd-codex-starter reference change -->
+<!-- 完備性審查來源: codex (review, 2026-05-19, 已傳遞: spec + design Decisions) -->
 
 ## ADDED Requirements
 

@@ -24,11 +24,21 @@ When the user says any of the following, you MUST start SDD flow immediately (`o
 
 只要符合上面 4 類訊號之一, 不論大小, 一律啟動 SDD。
 
-## Codex 第二意見
+## Codex 三階段審查
 
-進入 design 階段時,若符合 [AGENTS.md §3](AGENTS.md) 的 4 個條件 (技術選型 / 跨系統邊界 / 效能-安全 trade-off / 使用者明示),**自動**叫 Codex,不要先問。即使判斷不必叫,也 MUST 在 `design.md` 的 `## Decisions` 區頂端寫一行 `第二意見來源: 無 (理由: <具體一句>)`。
+Codex 在 SDD 流程中**自動介入三次**, 角色與留證欄位不同 (見 [AGENTS.md §3](AGENTS.md) 與 [§8](AGENTS.md)):
 
-呼叫前 MUST 先輸出一行「呼叫 codex 輔助分析中...」給 CLI 視覺結構,並在 prompt 開頭加 `--fresh` token (見 [docs/codex-handoff.md](docs/codex-handoff.md))。
+| 階段 | 角色 | 工作流標籤 | 留證欄位 |
+|---|---|---|---|
+| proposal | 對抗性審查 (壓力測試 Why/What/Impact) | `/codex:adversarial-review proposal.md` | `<!-- 對抗性審查來源: ... -->` |
+| design | 技術第二意見 (對抗性檢查決策) | `/codex:review design.md` | `第二意見來源: ...` |
+| spec | 完備性審查 (找漏掉的情境) | `/codex:review spec.md` | `<!-- 完備性審查來源: ... -->` |
+
+- **proposal / spec 階段**: 預設要審, **不問**「要不要審」, 直接走
+- **design 階段**: 符合 §3.2 四條件 (技術選型 / 跨系統邊界 / 效能-安全 trade-off / 使用者明示) 自動審
+- 三階段例外允許 (但留證 MUST 寫具體理由), `無 (理由: 不需要 | N/A)` 模糊寫法 CI 會擋
+- 呼叫前 MUST 輸出一行「呼叫 codex 輔助分析中...」給 CLI 視覺結構, 並在 prompt 開頭加 `--fresh` token (見 [docs/codex-handoff.md](docs/codex-handoff.md))
+- 三種 prompt 模板與「完整 context」段組成見 [docs/codex-handoff.md](docs/codex-handoff.md)
 
 ## Unsure?
 

@@ -7,9 +7,11 @@
 每次 `git commit` 前自動跑下列檢查 (對 `openspec/changes/` 內所有非 archive 的 change):
 
 1. `openspec validate --strict` — 結構 / Scenario / EARS 規則
-2. `design.md` 有 `## Decisions` 時, MUST 含 `第二意見來源:` 一行 (AGENTS §8)
-3. 每份 `specs/**/spec.md` MUST 含 `approved-by:` 標記 (AGENTS §7)
-4. `tasks.md` 每行 `- [ ] ...` MUST 含 `→ verified by:` (AGENTS §6)
+2. `proposal.md` MUST 含 `對抗性審查來源:` 一行 (AGENTS §8.1)
+3. `design.md` 有 `## Decisions` 時, MUST 含 `第二意見來源:` 一行 (AGENTS §8.2)
+4. 每份 `specs/**/spec.md` MUST 含 `完備性審查來源:` 一行 (AGENTS §8.3) **與** `approved-by:` 標記 (AGENTS §7)
+5. `tasks.md` 每行 `- [ ] ...` MUST 含 `→ verified by:` (AGENTS §6)
+6. 三個審查 audit 欄位的「無 (理由: 不需要 | N/A | 無)」模糊寫法皆會被擋
 
 ## 安裝
 
