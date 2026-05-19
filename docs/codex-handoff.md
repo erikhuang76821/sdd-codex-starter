@@ -102,6 +102,48 @@ Codex 跑在**完全獨立的對話 context**, 沒有 Claude 主對話的歷史,
 - ❌ **在 proposal 階段就叫 codex** → 太早, 連問題定義都還沒收斂
 - ❌ **Bugfix / refactor 也叫 codex** → 浪費 token, 流程僵化
 
+## Token 帳本
+
+每次 Codex 諮詢對 Claude **主 context** 的成本:
+
+| 段 | Token 估計 | 進主 context? |
+|---|---|---|
+| Claude 寫 prompt (proposal 全文 + 已決 Decisions + 題目) | ~500-1500 | ✅ Claude 的 assistant message |
+| Codex subagent 內部讀 prompt + 思考 + 寫回覆 | ~3000-8000 | ❌ Subagent 隔離 budget |
+| Codex 回覆作為 tool_result 返回 | ~300-800 | ✅ 進主 context |
+
+**單次成本 ≈ 1000-2000 tokens 進主 context**。
+
+對不同 context 容量的比例:
+
+| Context window | 單次比例 | 一個 change × 4 Decisions |
+|---|---|---|
+| Opus 1M | < 0.2% | < 1% |
+| Standard 200K | < 1% | < 2% |
+| Standard 32K | 3-6% | 12-25% (開始有壓力) |
+
+### 為什麼「完整 context」是對的權衡
+
+對比「只給摘要」版本:
+
+| 版本 | 單次成本 | 省下 | 代價 |
+|---|---|---|---|
+| 完整 context (現規則) | ~1000 | — | — |
+| 只給摘要 | ~500 | ~500 | Codex 失去脈絡覺, 回覆附「資訊不足」免責 |
+
+省 500 tokens 等於 1M context 的 0.05%。為這個換掉對抗性檢查 — 失衡。
+
+### Subagent 內部 token 不計
+
+Codex 自己讀 prompt、思考、寫回覆的 3-8K tokens 是 **subagent 隔離 context budget**,
+跟主 context 無關。不要把 subagent 內部成本算進主 context 預算。
+
+### 何時該動 token 優化
+
+- ❌ 1M / 200K context: 不必動, 規則的成本 < 1%
+- ⚠ 32K 小模型: 一個 change 累積到 12-25%, 但這時候做 spec-driven 本身就吃緊;
+  若必須優化, 應該換大 context model, 不是改規則
+
 ## 為何 Auto 模式必須遵守
 
 在 Claude Code auto / yolo / no-confirm 模式下, Claude 不會逐 prompt 與人類確認。

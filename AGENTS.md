@@ -3,6 +3,39 @@
 這份檔案是給 AI agent (Claude Code、Codex、Cursor 等) 讀的工作守則。
 凡是進到本專案做需求/設計/規格層級的工作, 一律遵守下列規則。
 
+## 0. 觸發信號 (進到此 repo 後立即生效)
+
+AI agent 收到下列任一訊號時, MUST **立即啟動 SDD 流程**, 不需使用者特別提醒、
+不需先問「要不要走 spec-driven」、不需先問「要不要叫 codex」。
+
+| 訊號類別 | 範例語句 |
+|---|---|
+| 新增功能 | 「加一個 X」「實作 ...」「做一個 ...」「I want to add ...」 |
+| 修改既有行為 | 「把 X 改成 Y」「重構 ...」「升級 ...」「migrate ...」 |
+| 技術選型 | 「選什麼 X」「決定用 ...」「評估 A vs B」「pick a framework」 |
+| 設計題目 | 「設計 ...」「規劃 ...」「architecture for ...」 |
+
+「立即啟動」= MUST 在第一個回應內:
+
+1. 跑 `openspec new change <kebab-id>` 自己命名, 不用先徵詢
+2. 進入 proposal 撰寫 (見 §1)
+3. design 階段符合 §3 條件時自動叫 Codex, 不用先問人類
+
+**禁止行為:**
+
+- ❌ 直接動 code (跳過 spec)
+- ❌ 問「要不要走 spec-driven 流程?」 — 預設要
+- ❌ 問「要不要叫 Codex?」 — 符合 §3 條件時預設要
+- ❌ 「我先實作一個簡單版, 之後再補 spec」 — 永遠不准
+- ❌ 把 spec 階段壓到事後文件化 — 必須先於 code
+
+**不觸發的場合** (這時純粹 patch / 答覆即可):
+
+- 純 bugfix (改幾行、有對應現有 spec scenario)
+- 純 rename / 樣式調整 / 文件更新
+- 問答 / 解釋 / 程式碼閱讀
+- 使用者明確說「不要走 SDD, 我只要 X」 (這時禮貌確認後跳過)
+
 ## 1. 工作流: OpenSpec 4 階段
 
 任何「新功能、改變既有行為、決定技術選型」的任務 MUST 走 OpenSpec 流程, 不得直接動 code。
@@ -86,7 +119,8 @@ OpenSpec validator 對 IF/WHILE/WHERE 都接受 (已驗證過 `openspec validate
 
 ## 3. 何時必須呼叫 Codex 第二意見
 
-進到 **design 階段** 且符合下列任一條件時, MUST 透過 `codex:rescue` (或等價的 Codex handoff) 取得第二意見, 不得自己單方面決定:
+進到 **design 階段** 且符合下列任一條件時, **自動透過** `codex:rescue` (或等價的 Codex handoff) 取得第二意見。
+**默認是「要諮詢」**, 不需使用者提醒, 不得先問「要不要諮詢」 — 例外才需在 audit trail 寫理由 (見 §8)。
 
 1. **技術選型**: 主框架/資料庫/部署平台/通訊協定 等「選了難回頭」的決定
 2. **跨系統整合邊界**: BFF、SSO、權限、多服務拆分這類「畫錯線就重寫」的決策

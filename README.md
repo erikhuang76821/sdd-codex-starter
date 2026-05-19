@@ -52,14 +52,23 @@ cd <your-project>
 # 2. 裝 OpenSpec CLI
 npm install -g @fission-ai/openspec
 
-# 3. 第一個 change
-openspec new change my-first-change --description "..."
-
-# 4. (可選) 啟用本機 pre-commit hook
+# 3. (可選) 啟用本機 pre-commit hook
 ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
-之後 AI 讀 `AGENTS.md` 自己走流程; 你只負責 spec 階段的 `approved-by:` 與 design 階段的 Codex 諮詢。
+### 開工
+
+直接跟 AI 講你要做什麼 — **不必先說「請走 SDD 流程」**, 也**不必下 `openspec` 指令**:
+
+| 你說 | AI 自動做的事 |
+|---|---|
+| 「加一個用戶登入功能」 | `openspec new change add-user-login` → 寫 proposal → 進 design → 必要時叫 Codex → 寫 spec → 寫 tasks |
+| 「選前端框架, 候選 Next.js / Nuxt / SvelteKit」 | 同上, design 階段自動叫 Codex 給對抗性第二意見 |
+| 「重構訂單流程支援多幣別」 | 同上, 跨系統邊界自動觸發 Codex |
+| 「把按鈕顏色改成藍色」 | 跳過 SDD, 直接 patch (純樣式) |
+
+觸發信號定義在 [`AGENTS.md`](AGENTS.md) §0; AI 進到 repo 後讀 AGENTS.md 自動執行,
+你只負責 spec 階段加 `<!-- approved-by: -->` 與審 Codex 的第二意見內容。
 
 ## 結構
 
