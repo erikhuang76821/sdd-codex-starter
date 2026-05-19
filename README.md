@@ -9,13 +9,14 @@
 
 ---
 
-## 解決四件事
+## 解決五件事
 
 | 痛點 | 對策 |
 |---|---|
 | 一開工就寫 code, 等 demo 才發現方向錯 | OpenSpec 強制 `proposal → design → specs → tasks` |
 | AI 寫 spec 格式不一、漏異常路徑 | EARS 對齊 + CI 強制每 Requirement 有 `[異常]` scenario |
 | 提案論點 / 技術選型 / 規格完備性 靠單一 AI 視角 | Codex 三階段審查 (對抗性 + 第二意見 + 完備性), 跑在獨立 context, 各階段必留 audit trail |
+| 企劃 / PM 讀不懂 design.md 的選型理由 → 失去跨職能 review | 每個 Decision 強制分層描述: **一句話 / 對使用者影響 / 為何不選 (業務語言) / 技術理由** |
 | Task 太大顆、完成判定模糊 | 每項 task 對應到 scenario, 客觀驗收 |
 
 ## 工作流
@@ -122,13 +123,14 @@ bash scripts/test.sh
 | [`AGENTS.md`](AGENTS.md) | AI 必讀工作守則 (入口 + 11 節, 階段細節連到 docs) |
 | [`docs/spec-writing.md`](docs/spec-writing.md) | EARS 5 pattern + 異常路徑強制 |
 | [`docs/task-writing.md`](docs/task-writing.md) | 獨立可驗證 task 規則 |
-| [`docs/codex-handoff.md`](docs/codex-handoff.md) | Codex 觸發時機 + 完整 context 模板 |
+| [`docs/codex-handoff.md`](docs/codex-handoff.md) | Codex 三階段介入觸發時機 + 完整 context 模板 (A/B/C) |
+| [`docs/decision-writing.md`](docs/decision-writing.md) | design.md Decision 的 4-marker 分層描述格式 (跨職能可讀) |
 | [`docs/output-formatting.md`](docs/output-formatting.md) | Codex 回覆視覺區塊格式 |
 | [`docs/testing.md`](docs/testing.md) | 怎麼跑 starter 自驗 + 加新測試 |
 | [`hooks/`](hooks/) | 本機 `pre-commit` + 安裝指南 |
-| [`scripts/test.sh`](scripts/test.sh) | 47 條單元 + 整合測試 (本機 / CI 共用) |
-| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 4 個結構 grep + 跑 scripts/test.sh |
-| [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/) | 完整 reference change (strict validate 通過) |
+| [`scripts/test.sh`](scripts/test.sh) | 63 條單元 + 整合測試 (本機 / CI 共用) |
+| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 7 個結構 grep + 跑 scripts/test.sh |
+| [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/) | 完整 reference change (strict validate 通過, D1-D4 含分層描述) |
 | `openspec/changes/archive/`, `openspec/specs/` | 空骨架, `openspec` CLI 預期路徑 |
 
 ## 設計原則
@@ -136,9 +138,10 @@ bash scripts/test.sh
 - **最低底線** — 不含 npm/git 設定、CI/CD 模板、腳手架腳本; 加什麼自己加
 - **規則 in code, 證據 in repo** — `AGENTS.md` 寫規則, `examples/` 留證據, `validate.yml` 守規則
 - **Auto 模式安全** — 規則寫到不需人類在當下提醒; LLM 在 yolo / no-confirm 模式仍會 follow
-- **自驗** — 47 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度)
+- **自驗** — 63 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度)
 - **零隱藏依賴** — 規則全在 repo 內, 無本機 memory / 帳號 secret / 雲端 API key 依賴; `git clone` 即完整
-- **指令量約束** — 約 108 條硬性指令, 落在 LLM 穩定遵守的 ~200 條安全帶內
+- **跨職能可讀** — design.md 不只給工程看, 每個 Decision 強制分層描述 (`**一句話** / **對使用者影響** / **為何不選** / 工程理由`), 讓 PM / 企劃也能參與 review
+- **指令量約束** — 約 130 條硬性指令, 落在 LLM 穩定遵守的 ~200 條安全帶內
 
 ## License
 
