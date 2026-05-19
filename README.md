@@ -15,18 +15,22 @@
 |---|---|
 | 一開工就寫 code, 等 demo 才發現方向錯 | OpenSpec 強制 `proposal → design → specs → tasks` |
 | AI 寫 spec 格式不一、漏異常路徑 | EARS 對齊 + CI 強制每 Requirement 有 `[異常]` scenario |
-| 技術選型靠單一 AI 視角 | Codex 對抗性第二意見, 跑在獨立 context, 必留 audit trail |
+| 提案論點 / 技術選型 / 規格完備性 靠單一 AI 視角 | Codex 三階段審查 (對抗性 + 第二意見 + 完備性), 跑在獨立 context, 各階段必留 audit trail |
 | Task 太大顆、完成判定模糊 | 每項 task 對應到 scenario, 客觀驗收 |
 
 ## 工作流
 
 ```mermaid
 flowchart LR
-    Need([需求]) --> P[proposal.md<br/>Why]
+    Need([需求]) --> P[proposal.md<br/>Why + What<br/>+ Capabilities + Impact]
+    P -. 預設要審 .-> Cxp[Codex 對抗性審查<br/>/codex:adversarial-review]
+    Cxp -. audit trail .-> P
     P --> D[design.md<br/>Decisions]
-    D -. 技術選型 .-> Cx[Codex 第二意見<br/>獨立 context<br/>完整 proposal + 已決 Decisions]
-    Cx -. audit trail .-> D
+    D -. 技術選型 .-> Cxd[Codex 第二意見<br/>/codex:review<br/>完整 proposal + 已決 Decisions]
+    Cxd -. audit trail .-> D
     D --> S[spec.md<br/>EARS + 異常路徑<br/>approved-by:]
+    S -. 預設要審 .-> Cxs[Codex 完備性審查<br/>/codex:review<br/>完整 spec + design Decisions]
+    Cxs -. audit trail .-> S
     S --> T[tasks.md<br/>每項 verified by:]
     T --> Code([實作 + CI 守門])
 ```
@@ -35,7 +39,9 @@ flowchart LR
 
 | Gate | 機器層 | 規則層 |
 |---|---|---|
-| design → Codex | grep `第二意見來源:` | AGENTS §3 §8 |
+| proposal → Codex | grep `對抗性審查來源:` | AGENTS §3.1 §8.1 |
+| design → Codex | grep `第二意見來源:` | AGENTS §3.2 §8.2 |
+| spec → Codex | grep `完備性審查來源:` | AGENTS §3.3 §8.3 |
 | design → spec | `openspec validate --strict` | AGENTS §1 §2 |
 | spec → tasks | grep `approved-by:` | AGENTS §7 |
 | tasks → commit | grep `→ verified by:` | AGENTS §6 |

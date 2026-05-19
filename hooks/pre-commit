@@ -5,11 +5,15 @@
 #   1. Runs `openspec validate --strict` on every active change in openspec/changes/
 #      (skipping openspec/changes/archive/)
 #   2. Greps for the audit-trail rules:
-#        - design.md  → must contain "第二意見來源:" (Codex audit trail, AGENTS §8)
-#        - spec.md    → must contain "approved-by:" or "approved-by: PENDING"
-#                       (Spec → Code gate, AGENTS §7)
-#        - tasks.md   → every checkbox line must contain "→ verified by:"
-#                       (Task writing, AGENTS §6)
+#        - proposal.md → must contain "對抗性審查來源:" (Codex audit trail §8.1)
+#        - design.md   → must contain "第二意見來源:"   (Codex audit trail §8.2)
+#        - spec.md     → must contain "完備性審查來源:" (Codex audit trail §8.3)
+#                        AND "approved-by:" or "approved-by: PENDING"
+#                        (Spec → Code gate, AGENTS §7)
+#        - tasks.md    → every checkbox line must contain "→ verified by:"
+#                        (Task writing, AGENTS §6)
+#      All three audit-trail fields reject vague rationales like
+#      "無 (理由: 不需要 | N/A | 無)".
 #
 # To install:
 #   ln -s ../../hooks/pre-commit .git/hooks/pre-commit
@@ -58,22 +62,47 @@ for change in "${changes[@]}"; do
 
   change_dir="openspec/changes/$change"
 
-  # 2. design.md → "第二意見來源:" (Codex audit trail)
+  # Helper: reject vague "無 (理由: 不需要 | N/A | 無)" rationale
+  check_vague_rationale() {
+    local file="$1"
+    local label="$2"
+    if grep -qE "${label}: *無 *\(理由: *(不需要|N/A|無)? *\)" "$file"; then
+      echo "  ✗ $file has vague '${label}: 無 (理由: ...)' — must be specific"
+      fail=1
+    fi
+  }
+
+  # 2a. proposal.md → "對抗性審查來源:" (Codex audit trail §8.1)
+  if [ -f "$change_dir/proposal.md" ]; then
+    if ! grep -q "對抗性審查來源:" "$change_dir/proposal.md"; then
+      echo "  ✗ $change_dir/proposal.md lacks '對抗性審查來源:' line (AGENTS §8.1)"
+      fail=1
+    fi
+    check_vague_rationale "$change_dir/proposal.md" "對抗性審查來源"
+  fi
+
+  # 2b. design.md → "第二意見來源:" (Codex audit trail §8.2)
   if [ -f "$change_dir/design.md" ]; then
     if grep -q "^## Decisions" "$change_dir/design.md"; then
       if ! grep -q "第二意見來源:" "$change_dir/design.md"; then
-        echo "  ✗ design.md has '## Decisions' but lacks '第二意見來源:' line (AGENTS §8)"
+        echo "  ✗ design.md has '## Decisions' but lacks '第二意見來源:' line (AGENTS §8.2)"
         fail=1
       fi
+      check_vague_rationale "$change_dir/design.md" "第二意見來源"
     fi
   fi
 
-  # 3. specs/**/spec.md → "approved-by:"
+  # 3. specs/**/spec.md → "approved-by:" AND "完備性審查來源:" (AGENTS §7 + §8.3)
   while IFS= read -r spec; do
     if ! grep -q "approved-by:" "$spec"; then
       echo "  ✗ $spec lacks 'approved-by:' marker (AGENTS §7)"
       fail=1
     fi
+    if ! grep -q "完備性審查來源:" "$spec"; then
+      echo "  ✗ $spec lacks '完備性審查來源:' line (AGENTS §8.3)"
+      fail=1
+    fi
+    check_vague_rationale "$spec" "完備性審查來源"
   done < <(find "$change_dir/specs" -name "spec.md" 2>/dev/null)
 
   # 4. tasks.md → every "- [ ]" line must have "→ verified by:"

@@ -1,3 +1,5 @@
+<!-- 對抗性審查來源: codex (adversarial-review, 2026-05-19, 已傳遞: 完整 proposal) -->
+
 ## Why
 
 舊版後台是 jQuery + 多頁式 PHP 樣板, 維運成本高且新人接手困難。需要為新版後台選定一個能支援 SSR、TypeScript、設計系統共用、未來 5 年仍有社群動能的前端技術棧。

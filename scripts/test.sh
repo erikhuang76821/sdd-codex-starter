@@ -143,9 +143,11 @@ check_phrase() {
 check_phrase "AGENTS.md" "立即啟動 SDD 流程" "trigger semantics"
 check_phrase "AGENTS.md" "規則沒有例外" "no-exception clause"
 check_phrase "AGENTS.md" "太簡單" "anti-downgrade clause"
-check_phrase "AGENTS.md" "proposal.md 全文 + 已決 Decisions" "full context transfer rule"
-check_phrase "AGENTS.md" "第二意見來源" "audit trail format"
-check_phrase "AGENTS.md" "Codex 呼叫失敗時 MUST 停止 design 流程" "codex failure stop condition"
+check_phrase "AGENTS.md" "proposal.md 全文 + 已決 Decisions 全文" "design-stage full context transfer rule"
+check_phrase "AGENTS.md" "對抗性審查來源" "proposal adversarial-review audit format"
+check_phrase "AGENTS.md" "第二意見來源" "design audit trail format"
+check_phrase "AGENTS.md" "完備性審查來源" "spec completeness-review audit format"
+check_phrase "AGENTS.md" "Codex 呼叫失敗時 MUST 停止對應階段流程" "codex failure stop condition"
 
 # CLAUDE.md anchors
 check_phrase "CLAUDE.md" "AGENTS.md" "CLAUDE.md points at AGENTS.md"
@@ -159,6 +161,9 @@ check_phrase "docs/codex-handoff.md" "auto / yolo / no-confirm" "auto-mode prese
 check_phrase "docs/codex-handoff.md" "not authenticated" "real source-code keyword (auth)"
 check_phrase "docs/codex-handoff.md" "is not installed" "real source-code keyword (CLI)"
 check_phrase "docs/codex-handoff.md" "npm install -g @openai/codex" "concrete fix path"
+check_phrase "docs/codex-handoff.md" "/codex:adversarial-review proposal.md" "adversarial-review workflow label"
+check_phrase "docs/codex-handoff.md" "/codex:review spec.md" "spec review workflow label"
+check_phrase "docs/codex-handoff.md" "完備性審查員" "spec completeness reviewer role"
 
 # docs/spec-writing.md anchors
 check_phrase "docs/spec-writing.md" "IF" "EARS unwanted-behaviour pattern"
@@ -259,6 +264,27 @@ else
     fail "hook ACCEPTED spec.md without approved-by (regression!)"
   fi
   mv spec.md.bak "$spec_file"
+
+  # Negative 2b: remove "完備性審查來源:" from spec.md → expect fail
+  cp "$spec_file" spec.md.bak
+  grep -v "完備性審查來源:" spec.md.bak > "$spec_file"
+  if ! run_hook; then
+    pass "hook rejects spec.md without 完備性審查來源"
+  else
+    fail "hook ACCEPTED spec.md without 完備性審查來源 (regression!)"
+  fi
+  mv spec.md.bak "$spec_file"
+
+  # Negative 2c: remove "對抗性審查來源:" from proposal.md → expect fail
+  proposal_file="openspec/changes/select-admin-frontend-stack/proposal.md"
+  cp "$proposal_file" proposal.md.bak
+  grep -v "對抗性審查來源:" proposal.md.bak > "$proposal_file"
+  if ! run_hook; then
+    pass "hook rejects proposal.md without 對抗性審查來源"
+  else
+    fail "hook ACCEPTED proposal.md without 對抗性審查來源 (regression!)"
+  fi
+  mv proposal.md.bak "$proposal_file"
 
   # Negative 3: remove "→ verified by:" from one task → expect fail
   tasks_file="openspec/changes/select-admin-frontend-stack/tasks.md"

@@ -2,9 +2,25 @@
 
 這份文件補充 [`../AGENTS.md`](../AGENTS.md) 第 3 節 (觸發時機) 與 第 8 節 (audit trail)。
 
+## 三種 Codex 介入角色
+
+Codex 在 SDD 流程中扮演**三種不同角色**, 對應三個階段 — prompt 角度、context 內容、留證欄位都不同, 但走的是同一條技術路徑 (本機 `codex:rescue` subagent + `--fresh`)。
+
+| 階段 | 角色 | 工作流標籤 | 對應留證欄位 |
+|---|---|---|---|
+| proposal | 對抗性審查員 — 壓力測試論點 | `/codex:adversarial-review proposal.md` | `對抗性審查來源:` |
+| design | 技術第二意見 — 對抗性檢查決策 | `/codex:review design.md` | `第二意見來源:` |
+| spec | 完備性審查員 — 找漏掉的情境 | `/codex:review spec.md` | `完備性審查來源:` |
+
+「工作流標籤」是給人類溝通用的稱呼, **底下都是同一個 codex:rescue 呼叫**, 差別只在 prompt 的角色定位與 context 內容。
+
 ## 觸發時機 (必呼叫)
 
-進入 `design.md` 的 `## Decisions` 區段時, 若符合下列任一條件:
+### proposal 階段 — 預設要審
+
+寫完 proposal.md (Why + What + Capabilities + Impact) 後, **不問**「要不要對抗性審查」, 直接走。例外 (允許跳過但 audit trail 必須具體記理由): 純 bugfix / 純 rename 衍生的 spec 改動, 沒有方向性決定。
+
+### design 階段 — 進到 Decisions 區段時若符合下列任一條件
 
 1. **技術選型**: 「選了難回頭」的決定 (主框架 / DB / runtime / 雲廠商 / 通訊協定)
 2. **跨系統邊界**: BFF / SSO / 權限 / 微服務拆分 等「畫錯線就重寫」的設計
@@ -12,6 +28,10 @@
 4. **使用者明示**: 「get a second opinion」「let codex check」「找 codex 確認」
 
 不需要呼叫: bugfix / rename / 純文件 / 純樣式 / refactor。
+
+### spec 階段 — 預設要審
+
+spec.md 寫完且 `openspec validate --strict` 通過後, 在請人類 approver 前, **不問**「要不要完備性審查」, 直接走。Codex 在此扮演「找漏」角色, 對抗 happy-path bias 與 error scenario 走形式的傾向。例外 (允許跳過但 audit trail 必須具體記理由): 純文件 spec、純 rename, 沒有新行為。
 
 ## 呼叫方式
 
@@ -79,31 +99,51 @@ do not ask whether to continue.」
 
 ## 完整 Context 傳遞 (硬性要求)
 
-呼叫 codex 時, prompt MUST 包含下列三段, 一段都不能省:
+無論哪個階段, **prompt MUST 包含對應階段所需的完整 context**, 一段都不能省。三個階段的 context 組成不同:
 
-### 段 1: proposal.md 全文
+| 階段 | Context 段 |
+|---|---|
+| proposal 對抗性審查 | proposal.md 全文 + 當前壓力測試焦點 |
+| design 第二意見 | proposal.md 全文 + 已決 Decisions 全文 + 當前題目 |
+| spec 完備性審查 | spec.md 全文 + 對應 design Decisions 全文 + 完備性檢查清單 |
 
-直接從本地檔案複製貼上。**不要改寫、不要摘要**。
+### 不可改寫、不可摘要
 
-### 段 2: design.md 中已決定的 Decisions (若有)
+不論哪段, 來自 `openspec/changes/<id>/*.md` 的內容 MUST 原文複製貼上, **不要改寫、不要摘要**。摘要會讓 codex 在資訊不對等下作答, 失去第二意見價值。
 
-若這不是 design 階段的第一個 Decision, MUST 把前面已 commit 的 Decision 標題與
-理由完整貼進去, 讓 codex 知道:
+### 為何 design 段 codex 必須看到已決 Decisions
 
-- 已經決定了什麼 (限制了當前題目的解空間)
-- 為什麼那樣決 (約束鏈條)
+例: 若主框架已選 Next.js, 現在要問 UI 元件庫, codex 必須看到主框架是 Next.js, 否則它可能推薦只與 Vue 配合的 UI 庫。
 
-例: 若主框架已選 Next.js, 現在要問 UI 元件庫, codex 必須看到主框架是 Next.js,
-否則它可能推薦只與 Vue 配合的 UI 庫。
+### 為何 spec 段 codex 必須看到 Decisions
 
-### 段 3: 當前題目與限制體裁
-
-- 明確問題 (要回答什麼)
-- 明確場景 (企業內部後台 / C 端高流量 / 一次性活動)
-- 明確結構要求 (推薦 + elimination + 風險 + mitigation)
-- 明確體裁 (條列, 不要 essay)
+design 已決的技術選型 (例如「狀態管理 = Redux Toolkit」「BFF 層由 Next.js Route Handlers 承載」) 會限制 spec scenario 的合理形狀。codex 沒看到這些, 可能要求一些已被 design 排除的情境覆蓋, 浪費 review 火力。
 
 ## Prompt 模板
+
+### 模板 A — proposal 對抗性審查 (`/codex:adversarial-review proposal.md`)
+
+```
+你是 SDD 提案的對抗性審查員。下面是完整 proposal, 讀完後給壓力測試意見。
+
+## Context: 完整 proposal
+
+<從 openspec/changes/<id>/proposal.md 全文貼進來, 不省略>
+
+## 審查焦點
+
+請對以下四面向各給 1-2 條對抗性意見 (找弱點, 不是肯定):
+
+1. **Why 是否站得住腳** — 痛點是否被誇大? 是否還有更便宜的非工程解法 (流程 / 教育訓練 / 既有工具)?
+2. **What Changes 是否抓對範圍** — 是否漏了關鍵變動? 是否塞了不必要的範圍?
+3. **Capabilities 切分是否合理** — 新 capability vs modified capability 邊界對嗎? 是否有重複或漏項?
+4. **Impact / 風險評估是否誠實** — 最大的兩個被低估的風險是什麼? Mitigation 是否實際可行?
+
+體裁: 條列, 每點一句結論 + 一句理由, 不寫 essay, 全段不超過 250 字。
+這份審查會直接寫進對應 proposal.md 的 audit trail, 並可能觸發 proposal 內容修訂。
+```
+
+### 模板 B — design 技術第二意見 (`/codex:review design.md`)
 
 ```
 你是技術選型第二意見。下面是完整脈絡, 讀完後給對抗性意見。
@@ -131,16 +171,59 @@ do not ask whether to continue.」
 這個第二意見會直接寫進 openspec design.md 的 Decisions 區域。
 ```
 
+### 模板 C — spec 完備性審查 (`/codex:review spec.md`)
+
+```
+你是 SDD spec 的完備性審查員。下面是完整 spec 與相關 design Decisions,
+讀完後檢查 Requirements 與 scenario 是否完備。
+
+## Context: 完整 spec
+
+<從 openspec/changes/<id>/specs/<capability>/spec.md 全文貼進來, 不省略>
+
+## Context: 對應 design Decisions
+
+<從 openspec/changes/<id>/design.md 的 ## Decisions 區全文貼進來,
+ 讓 codex 看見已決技術選型的約束>
+
+## 完備性檢查清單
+
+請逐條檢查並列出**找到的漏洞**, 沒漏洞的條目直接跳過, 不要寫「OK」:
+
+1. **每個 Requirement 是否至少 1 happy + 1 `[異常]` scenario?**
+2. **異常路徑是否覆蓋 4 類 (上游失敗 / 認證權限 / 資料缺失 / 重試耗盡降級)?**
+   挑出只覆蓋一類交差的 Requirement。
+3. **error scenario 是否寫「對使用者的可觀察影響」?**
+   挑出只寫「系統 log 錯誤」「記錄事件」這類內部行為的條目。
+4. **是否漏寫使用者實際會撞到但 happy path 想不到的情境?**
+   例: race condition / 超時 / 部分成功 / 跨 tab 競爭 / 退回上一步狀態回填 等。
+5. **是否有 scenario 用 WHEN 描述異常觸發 (應該用 IF)?**
+
+體裁: 條列, 每點一句說「哪個 Requirement / Scenario 漏了什麼」, 不寫 essay, 全段不超過 300 字。
+這份審查會直接寫進對應 spec.md 的 audit trail, 並 MUST 觸發 spec 內容修訂 (不只記 audit, spec 內容也要補)。
+```
+
 ## 收到回覆後的處理
 
+### 通用步驟
+
 1. **呈現給使用者時**用 [`output-formatting.md`](output-formatting.md) 的視覺區塊
-2. **寫進 design.md 時** 在 Decisions 區頂端加一行 (AGENTS §8):
-   ```
-   第二意見來源: codex (codex:rescue, YYYY-MM-DD, 已傳遞: proposal + Decisions <範圍>)
-   ```
-   - `Decisions <範圍>` 是當時已 commit 的 Decision 編號 (例: `D1`), 或 `首個決策`
-3. **不要照抄**, 要在每個 Decision 加上「為何接受/不接受 codex 的建議」
-4. **衝突時**: codex 與你的判斷不同, 明確記下兩方理由與最終選擇, 不要默默忽略
+2. **不要照抄**, 要記下「為何接受/不接受 codex 的建議」
+3. **衝突時**: codex 與你的判斷不同, 明確記下兩方理由與最終選擇, 不要默默忽略
+
+### 階段別寫進檔案
+
+| 階段 | 寫進哪份檔 | Audit trail 格式 |
+|---|---|---|
+| proposal | `proposal.md` 頂端 HTML 註解 | `<!-- 對抗性審查來源: codex (adversarial-review, YYYY-MM-DD, 已傳遞: 完整 proposal) -->` |
+| design | `design.md` 的 `## Decisions` 區頂端 | `第二意見來源: codex (codex:rescue, YYYY-MM-DD, 已傳遞: proposal + Decisions <範圍>)` |
+| spec | `spec.md` 頂端 HTML 註解 (與 approved-by 同處檔案開頭) | `<!-- 完備性審查來源: codex (review, YYYY-MM-DD, 已傳遞: spec + design Decisions) -->` |
+
+### spec 完備性審查的特殊要求
+
+完備性審查若指出漏洞, **MUST 修 spec 內容** (補 scenario), 不只記在 audit trail。
+若決定不採 codex 某條建議, MUST 在 spec.md 末尾或 design.md Open Questions 內寫「Codex 建議補 X, 不採, 因為 ...」。
+完備性審查不是「跑個流程留證」, 是「找漏 → 補漏」的閉環。
 
 ## Codex 不可用時 (Fallback SOP)
 
@@ -230,12 +313,13 @@ node "$HOME/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-com
 
 ## 反模式
 
-- ❌ **只給摘要, 不貼完整 proposal** → codex 在資訊不對等下作答; 回覆會附「proposal 在沙箱無法讀取」之類的免責, 喪失第二意見價值
+- ❌ **只給摘要, 不貼完整 proposal / spec** → codex 在資訊不對等下作答; 回覆會附「在沙箱無法讀取」之類的免責, 喪失審查價值
 - ❌ **省略已決定的 Decisions** → codex 可能推薦與既決選項不相容的方案 (例: 主框架選 Next.js 後問 UI, 不告知主框架 → 可能推薦 Vue-only 庫)
-- ❌ **無焦點丟「review 一下」** → 拿不到 actionable 答案; 完整 context 必須配明確問題
+- ❌ **無焦點丟「review 一下」** → 拿不到 actionable 答案; 完整 context 必須配明確角色 (對抗性 / 第二意見 / 完備性) 與明確問題
 - ❌ **Codex 回什麼就照抄** → 失去對抗性, 變成「換個模型寫單方意見」
-- ❌ **在 proposal 階段就叫 codex** → 太早, 連問題定義都還沒收斂
-- ❌ **Bugfix / refactor 也叫 codex** → 浪費 token, 流程僵化
+- ❌ **proposal 階段把 prompt 寫成「請給技術建議」** → 角色錯; proposal 階段 codex 是審 proposal 自己, 不是審技術選型
+- ❌ **spec 完備性審查只記 audit trail, 不補 spec** → 留證但不修, 是規避; 必須補完 scenario 後再進 approved-by
+- ❌ **Bugfix / refactor / 純文件 也叫 codex 三次** → 浪費 token, 流程僵化; 例外場合用「無 (理由: ...)」走 audit trail
 
 ## Token 帳本
 
@@ -243,19 +327,20 @@ node "$HOME/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-com
 
 | 段 | Token 估計 | 進主 context? |
 |---|---|---|
-| Claude 寫 prompt (proposal 全文 + 已決 Decisions + 題目) | ~500-1500 | ✅ Claude 的 assistant message |
+| Claude 寫 prompt (完整 context 段) | ~500-1500 | ✅ Claude 的 assistant message |
 | Codex subagent 內部讀 prompt + 思考 + 寫回覆 | ~3000-8000 | ❌ Subagent 隔離 budget |
 | Codex 回覆作為 tool_result 返回 | ~300-800 | ✅ 進主 context |
 
 **單次成本 ≈ 1000-2000 tokens 進主 context**。
+**一個 change 三次呼叫 (proposal + design + spec) ≈ 3000-6000 tokens 進主 context**。
 
 對不同 context 容量的比例:
 
-| Context window | 單次比例 | 一個 change × 4 Decisions |
+| Context window | 單次比例 | 一個 change × 3 階段審查 + 4 Decisions |
 |---|---|---|
-| Opus 1M | < 0.2% | < 1% |
-| Standard 200K | < 1% | < 2% |
-| Standard 32K | 3-6% | 12-25% (開始有壓力) |
+| Opus 1M | < 0.2% | < 2% |
+| Standard 200K | < 1% | < 5% |
+| Standard 32K | 3-6% | 25-50% (吃緊) |
 
 ### 為什麼「完整 context」是對的權衡
 
@@ -275,18 +360,18 @@ Codex 自己讀 prompt、思考、寫回覆的 3-8K tokens 是 **subagent 隔離
 
 ### 何時該動 token 優化
 
-- ❌ 1M / 200K context: 不必動, 規則的成本 < 1%
-- ⚠ 32K 小模型: 一個 change 累積到 12-25%, 但這時候做 spec-driven 本身就吃緊;
-  若必須優化, 應該換大 context model, 不是改規則
+- ❌ 1M / 200K context: 不必動, 三階段審查累積成本 < 5%
+- ⚠ 32K 小模型: 一個 change 累積到 25-50%, 這時候做 spec-driven 本身就吃緊;
+  若必須優化, 應該換大 context model, 不是改規則 — 或在 proposal / spec 階段用「無 (理由: 具體說明)」escape hatch, 而不是改全套規則
 
 ## 為何 Auto 模式必須遵守
 
 在 Claude Code auto / yolo / no-confirm 模式下, Claude 不會逐 prompt 與人類確認。
 這時上面的「完整 context 傳遞」規則是唯一保險:
 
-- 沒人在當下提醒「記得把 proposal 貼進去」
+- 沒人在當下提醒「記得把 proposal 貼進去」「記得三階段都要呼叫」
 - Claude 會依文件規則自動執行
-- 規則若寫「給摘要」 → codex 永遠看不到全貌 → 第二意見永遠是半瞎
-- 規則若寫「貼完整 proposal + Decisions」 → 即使沒人盯, codex 也拿得到應有的脈絡
+- 規則若寫「給摘要」 → codex 永遠看不到全貌 → 審查永遠是半瞎
+- 規則若寫「proposal / spec 階段預設要審」 → 即使沒人盯, 也不會跳過; CI grep 兜底攔走
 
-所以本文件的硬性要求 = auto 模式下唯一不會崩的閘門。
+所以本文件的硬性要求 + AGENTS §8 的 audit trail grep = auto 模式下唯一不會崩的閘門。

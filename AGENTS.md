@@ -91,10 +91,27 @@ openspec archive <id>   # 全部 tasks 勾完才執行
 
 ## 3. 何時必須呼叫 Codex 第二意見
 
-**進入 design 階段前 MUST 開** [`docs/codex-handoff.md`](docs/codex-handoff.md)。
+**進入 proposal / design / specs 任一階段前 MUST 開** [`docs/codex-handoff.md`](docs/codex-handoff.md)。
 Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看完整版。
 
-進到 **design 階段** 且符合下列任一條件時, **自動透過** `codex:rescue` 取得第二意見。
+Codex 介入分**三種角色**, 對應三個 SDD 階段:
+
+| 階段 | Codex 角色 | 目的 | Audit trail 欄位 (見 §8) |
+|---|---|---|---|
+| proposal | **對抗性審查 (adversarial-review)** | 壓力測試 Why / What / Capabilities / Impact 是否站得住腳 | `對抗性審查來源:` |
+| design | **技術第二意見 (review)** | 對抗性檢查技術選型 / 邊界決策 / trade-off | `第二意見來源:` |
+| specs | **完備性審查 (review)** | 檢查 Requirements 覆蓋率 + happy/error scenario 是否完備 | `完備性審查來源:` |
+
+### 3.1 proposal 階段 — 對抗性審查
+
+**默認是「要審」**。寫完 proposal.md (Why + What + Capabilities + Impact 四段) 後, **自動透過** `codex:rescue` 取得對抗性意見, 不問「要不要審」。
+
+- 觸發無條件: 只要走 SDD 就有 proposal, 就有 proposal 對抗性審查
+- 例外允許 (但 MUST 在 audit trail 寫具體理由): 純 bugfix 衍生 spec 改動、純 rename 衍生 spec 改動 等明顯無方向風險的場合
+
+### 3.2 design 階段 — 技術第二意見
+
+進到 design 階段且符合下列任一條件時, **自動透過** `codex:rescue` 取得第二意見。
 **默認是「要諮詢」**, 不得先問「要不要諮詢」 — 例外才需在 audit trail 寫理由 (見 §8)。
 
 1. **技術選型**: 主框架 / 資料庫 / 部署平台 / 通訊協定 等「選了難回頭」的決定
@@ -104,13 +121,27 @@ Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看
 
 不必呼叫的場合: 純 bugfix、refactor、命名調整、文件、樣式。
 
-不可違反的停止條件:
+### 3.3 specs 階段 — 完備性審查
 
-- 呼叫 codex 的 prompt MUST 包含 proposal.md 全文 + 已決 Decisions 全文, 不得只給摘要
+**默認是「要審」**。spec.md 寫完且 `openspec validate --strict` 通過後, 在請人類 approver 前, **自動透過** `codex:rescue` 取得完備性審查:
+
+- 每個 Requirement 是否至少 1 happy + 1 `[異常]` scenario
+- 異常路徑是否覆蓋四類 (上游失敗 / 認證權限 / 資料缺失 / 降級), 還是只挑一類交差
+- error scenario 是否寫「對使用者的可觀察影響」, 而不是只寫「系統 log 錯誤」
+- 是否漏寫使用者實際會撞到但 happy path 想不到的情境
+
+例外允許 (但 MUST 在 audit trail 寫具體理由): 純文件 spec、純 rename 等明顯無新行為的場合。
+
+### 3.4 跨三階段的不可違反停止條件
+
+- 呼叫 codex 的 prompt MUST 包含對應階段所需的完整 context, 不得只給摘要 (詳見 [docs/codex-handoff.md](docs/codex-handoff.md) 三種模板)
+  - proposal 對抗性審查: proposal.md 全文
+  - design 第二意見: proposal.md 全文 + 已決 Decisions 全文
+  - spec 完備性審查: spec.md 全文 + 對應 design Decisions 全文
 - 呼叫前 MUST 在 AI 自己的文字輸出一行宣告「呼叫 codex 輔助分析中...」(或等價語句), 給使用者 CLI 視覺結構
 - 諮詢路徑 MUST 走本機 AI 工具 + 使用者 ChatGPT OAuth session, 不得設 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` secret 走雲端 API 模擬 Codex
 - Claude Code 環境下 MUST 帶 `--fresh` 跳過 task-resume helper, 除非使用者明示要 resume 既有 thread
-- **Codex 呼叫失敗時 MUST 停止 design 流程**, 引述完整錯誤訊息給使用者, 指明修復路徑 (例: `/codex:setup`), 不得當「使用者沒設定 codex」自己跳過繼續寫 Decisions。修復前 design 階段冰封。Fallback SOP 見 [docs/codex-handoff.md「Codex 不可用時」](docs/codex-handoff.md)
+- **Codex 呼叫失敗時 MUST 停止對應階段流程**, 引述完整錯誤訊息給使用者, 指明修復路徑 (例: `/codex:setup`), 不得當「使用者沒設定 codex」自己跳過繼續寫下一段。修復前該階段冰封。Fallback SOP 見 [docs/codex-handoff.md「Codex 不可用時」](docs/codex-handoff.md)
 - 在 auto / yolo 模式這些規則是唯一保險, 沒人會在當下提醒
 
 ## 4. Codex 回覆呈現格式
@@ -156,23 +187,55 @@ Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看
 4. 若 approver 不同意 spec, MUST 退回 design 或 specs 重寫, 不得「以 commit comment 表達不同意」蒙混。
 5. CI grep 守: spec.md 缺 `approved-by:` 標記 → CI fail (允許 `approved-by: PENDING` 暫態, 但 archive 前必須換成真名)。
 
-## 8. Codex Audit Trail (第二意見留證)
+## 8. Codex Audit Trail (三階段留證)
 
-§3 規定**何時必須呼叫 codex**。本節規定**留證格式**: 即便最終決定不諮詢, 也要在 design.md 明記理由, 不得無聲跳過。
+§3 規定**何時必須呼叫 codex**。本節規定**留證格式**: 即便最終決定不諮詢, 也要在對應檔案明記理由, 不得無聲跳過。
 
-**這是寫 design.md 前就要知道的契約, 不能塞 docs**:
+**這是寫 proposal / design / spec 任一份前就要知道的契約, 不能塞 docs**:
 
-1. `design.md` 的 `## Decisions` 區頂端 MUST 含一行:
-   ```
-   第二意見來源: <codex (codex:rescue, YYYY-MM-DD, 已傳遞: proposal + Decisions <範圍>) | 無 (理由: <一句話>)>
-   ```
-   - `Decisions <範圍>` 是當時已 commit 的 Decision 編號 (例: `D1` 或 `D1-D2`), 或 `首個決策`
-   - 此欄位讓人類審計時能快速判斷 codex 是否拿到完整脈絡
-2. 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純 bugfix, 不涉及技術選型)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白。
-3. 若諮詢結果與最終決定衝突, design.md 個別 Decision 下 MUST 寫「Codex 建議 X, 採 Y, 因為 ...」。
-4. CI grep 守: 凡 `design.md` 內出現 `## Decisions` 區但前面沒有「第二意見來源:」一行 → CI fail。
+### 8.1 proposal.md — 對抗性審查留證
 
-設計理由: 不強制「行為」(must call codex), 強制「留證」(must record decision rationale)。留證可被 grep, 行為很難 grep。
+`proposal.md` 檔案**頂端** (在 `## Why` 之前) MUST 含一行 HTML 註解:
+
+```markdown
+<!-- 對抗性審查來源: <codex (adversarial-review, YYYY-MM-DD, 已傳遞: 完整 proposal) | 無 (理由: <一句話>)> -->
+```
+
+- 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純 rename 衍生 spec, 無方向決定)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白
+- 若 codex 與最終 proposal 有衝突, MUST 在 proposal.md 末尾「## Open Questions」或「## Impact」附近寫一段「Codex 質疑 X, 我們仍採 Y, 因為 ...」
+
+### 8.2 design.md — 技術第二意見留證
+
+`design.md` 的 `## Decisions` 區頂端 MUST 含一行:
+
+```
+第二意見來源: <codex (codex:rescue, YYYY-MM-DD, 已傳遞: proposal + Decisions <範圍>) | 無 (理由: <一句話>)>
+```
+
+- `Decisions <範圍>` 是當時已 commit 的 Decision 編號 (例: `D1` 或 `D1-D2`), 或 `首個決策`
+- 此欄位讓人類審計時能快速判斷 codex 是否拿到完整脈絡
+- 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純 bugfix, 不涉及技術選型)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白
+- 若諮詢結果與最終決定衝突, design.md 個別 Decision 下 MUST 寫「Codex 建議 X, 採 Y, 因為 ...」
+
+### 8.3 spec.md — 完備性審查留證
+
+`spec.md` 檔案**頂端** (在既有 `approved-by:` 之上或之下皆可, 但 MUST 同處於檔案開頭註解區) MUST 含一行:
+
+```markdown
+<!-- 完備性審查來源: <codex (review, YYYY-MM-DD, 已傳遞: spec + design Decisions) | 無 (理由: <一句話>)> -->
+```
+
+- 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純文件 spec, 無新行為)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白
+- 若 codex 指出漏寫的情境, MUST 補進 spec, 不得只記在 audit trail 而 spec 內容不動
+
+### 8.4 共通規則
+
+1. CI grep 守:
+   - `proposal.md` 缺 `對抗性審查來源:` → CI fail
+   - `design.md` 出現 `## Decisions` 區但缺 `第二意見來源:` → CI fail
+   - `spec.md` 缺 `完備性審查來源:` → CI fail
+2. 三份檔案的「無 (理由: 不需要 | N/A | 無)」模糊寫法皆 CI fail
+3. 設計理由: 不強制「行為」(must call codex), 強制「留證」(must record audit rationale)。留證可被 grep, 行為很難 grep。
 
 ## 9. CI Fail / Hook 拒絕的處理
 
@@ -186,7 +249,7 @@ Codex prompt 完整性是密集程序規則, 縮成一句必然漂移, 必須看
 
 ## 10. 自動化的邊界 (CI 抓不到什麼)
 
-CI grep 守 5 個結構性規則 (strict validate / 異常 scenario 覆蓋率 / approved-by / verified-by / 第二意見來源), 但**抓不到品質性問題**:
+CI grep 守 7 個結構性規則 (strict validate / 異常 scenario 覆蓋率 / 對抗性審查來源 / 第二意見來源 / 完備性審查來源 / approved-by / verified-by), 但**抓不到品質性問題**:
 
 - ✗ 抓不到「task 寫了 `→ verified by:` 但實際不可獨立執行」 (例: `- [ ] 完成所有功能 → verified by: 無 (理由: 整體驗收)`)
 - ✗ 抓不到「Codex 收到的 prompt 真的有貼完整 proposal」 (只能 grep audit trail 一行)

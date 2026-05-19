@@ -154,6 +154,19 @@ OpenSpec scenario 用 `WHEN/THEN` 模板, 剛好對應 EARS 的 event-driven pat
 - [ ] error scenario 描述「對使用者的可觀察影響」, 而不只是「系統 log」
 - [ ] 規範用語 SHALL / MUST, 沒出現 should / may
 - [ ] `openspec validate <change-id> --strict` 通過
+- [ ] spec.md 頂端含 `<!-- 完備性審查來源: ... -->` (Codex 完備性審查 audit trail, AGENTS §8.3)
+- [ ] spec.md 頂端含 `<!-- approved-by: ... -->` (人類審核, AGENTS §7)
+
+## 完備性審查 (Codex review)
+
+`openspec validate --strict` 是機器層 — 它確認 EARS 結構齊全, 但不會幫你判斷 scenario 是不是真的把重要情境覆蓋完。
+
+**完備性審查由 Codex 跑** (見 [`codex-handoff.md`](codex-handoff.md) 模板 C):
+
+- spec.md 寫完且 `--strict` 通過後, 在請人類 approver 前, 自動透過 `codex:rescue` 跑一遍
+- Codex 拿 spec 全文 + 對應 design Decisions, 對照「異常路徑四類覆蓋」「使用者可觀察影響」等清單找漏
+- **找到漏洞 MUST 補進 spec**, 不只記 audit trail (見 AGENTS §8.3「完備性審查的特殊要求」)
+- 例外允許 (純文件 spec / 純 rename) 但 audit trail 必須寫具體理由
 
 ## 進一步閱讀
 
