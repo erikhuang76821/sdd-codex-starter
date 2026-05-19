@@ -1,73 +1,87 @@
 # sdd-codex-starter
 
+> 把 **Spec-Driven Development** 與 **AI 對抗性第二意見** 變成可重現的工作流, 拷到任何專案就能跑。
+
 [![validate-openspec](https://github.com/erikhuang76821/sdd-codex-starter/actions/workflows/validate.yml/badge.svg)](https://github.com/erikhuang76821/sdd-codex-starter/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-把 **Spec-Driven Development (OpenSpec)** 與 **Codex 第二意見介入** 兩件事
-封裝成一份「拷到任何專案就能跑」的最低底線骨架。
+不是 framework, 沒有腳手架腳本 — 一個 directory + 一份 `AGENTS.md`, AI 讀完自己照規矩走。
 
-不是 framework, 沒有腳手架腳本, 就是一個 directory + 一份 AGENTS.md。
+---
 
-## 它解決什麼
+## 解決四件事
 
-- 新功能/技術選型一開工就先寫 code, 等 demo 才發現方向錯了
-- AI 寫 proposal/spec 時格式不一, 後續無法 validate 或 archive
-- 技術選型靠單一視角決定 (你 + Claude / 你 + Codex), 缺少對抗性檢查
-- Codex 輸出與 AI 自己的補充混在一起, 讀者分不清誰講的
+| 痛點 | 對策 |
+|---|---|
+| 一開工就寫 code, 等 demo 才發現方向錯 | OpenSpec 強制 `proposal → design → specs → tasks` |
+| AI 寫 spec 格式不一、漏異常路徑 | EARS 對齊 + CI 強制每 Requirement 有 `[異常]` scenario |
+| 技術選型靠單一 AI 視角 | Codex 對抗性第二意見, 跑在獨立 context, 必留 audit trail |
+| Task 太大顆、完成判定模糊 | 每項 task 對應到 scenario, 客觀驗收 |
 
-## 把它放到新專案
+## 工作流
+
+```mermaid
+flowchart LR
+    Need([需求]) --> P[proposal.md<br/>Why]
+    P --> D[design.md<br/>Decisions]
+    D -. 技術選型 .-> Cx[Codex 第二意見<br/>獨立 context<br/>完整 proposal + 已決 Decisions]
+    Cx -. audit trail .-> D
+    D --> S[spec.md<br/>EARS + 異常路徑<br/>approved-by:]
+    S --> T[tasks.md<br/>每項 verified by:]
+    T --> Code([實作 + CI 守門])
+```
+
+每個箭頭都有機器層與規則層雙重守門:
+
+| Gate | 機器層 | 規則層 |
+|---|---|---|
+| design → Codex | grep `第二意見來源:` | AGENTS §3 §8 |
+| design → spec | `openspec validate --strict` | AGENTS §1 §2 |
+| spec → tasks | grep `approved-by:` | AGENTS §7 |
+| tasks → commit | grep `→ verified by:` | AGENTS §6 |
+| commit → push | `hooks/pre-commit` + CI | AGENTS §9 |
+
+## 上手 (3 分鐘)
 
 ```bash
-# 1. 把整個 sdd-codex-starter/ 內容複製到目標專案 root
+# 1. 拷到新專案
+git clone https://github.com/erikhuang76821/sdd-codex-starter.git
 cp -r sdd-codex-starter/. <your-project>/
+cd <your-project>
 
-# 2. 確認 openspec CLI 裝好
-npm i -g @fission-ai/openspec
-openspec --version
+# 2. 裝 OpenSpec CLI
+npm install -g @fission-ai/openspec
 
 # 3. 第一個 change
-cd <your-project>
-openspec new change <kebab-id> --description "<一句話>"
+openspec new change my-first-change --description "..."
+
+# 4. (可選) 啟用本機 pre-commit hook
+ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
-之後讓 AI 讀 `AGENTS.md` 走流程即可。
+之後 AI 讀 `AGENTS.md` 自己走流程; 你只負責 spec 階段的 `approved-by:` 與 design 階段的 Codex 諮詢。
 
-## 目錄結構
+## 結構
 
-```
-sdd-codex-starter/
-├── README.md                          ← 你正在看的這份
-├── AGENTS.md                          ← AI 必讀: 4 階段流程 + 何時叫 codex + 輸出格式
-├── openspec/
-│   ├── changes/
-│   │   └── archive/                   ← archive 後的 change 落腳處
-│   └── specs/                         ← 已 archive 進主規格的 capability
-├── docs/
-│   ├── spec-writing.md               ← EARS 對應、Scenario 模板、異常路徑要求
-│   ├── codex-handoff.md              ← 呼叫 Codex 的 prompt 範本與時機
-│   └── output-formatting.md          ← Codex 回覆視覺格式 (含範例)
-└── examples/
-    └── select-admin-frontend-stack/   ← 完整 reference change (validate --strict 通過)
-```
-
-## 最低底線承諾
-
-這個 starter 故意小:
-
-| 有 | 沒有 |
+| 路徑 | 用途 |
 |---|---|
-| openspec 目錄骨架 | npm/git 設定 |
-| AI 工作守則 (AGENTS.md) | CI/CD 模板 |
-| codex 介入 prompt 範本 | hook scripts |
-| 一個 validate 過的 reference change | 自動腳手架腳本 |
+| [`AGENTS.md`](AGENTS.md) | AI 必讀工作守則 (10 節) |
+| [`docs/spec-writing.md`](docs/spec-writing.md) | EARS 5 pattern + 異常路徑強制 |
+| [`docs/task-writing.md`](docs/task-writing.md) | 獨立可驗證 task 規則 |
+| [`docs/codex-handoff.md`](docs/codex-handoff.md) | Codex 觸發時機 + 完整 context 模板 |
+| [`docs/output-formatting.md`](docs/output-formatting.md) | Codex 回覆視覺區塊格式 |
+| [`hooks/`](hooks/) | 本機 `pre-commit` + 安裝指南 |
+| [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 4 個結構 grep |
+| [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/) | 完整 reference change (strict validate 通過) |
+| `openspec/changes/archive/`, `openspec/specs/` | 空骨架, `openspec` CLI 預期路徑 |
 
-加什麼自己加, 但這四件不要拿掉, 否則整個流程會破。
+## 設計原則
 
-## 進一步閱讀
+- **最低底線** — 不含 npm/git 設定、CI/CD 模板、腳手架腳本; 加什麼自己加
+- **規則 in code, 證據 in repo** — `AGENTS.md` 寫規則, `examples/` 留證據, `validate.yml` 守規則
+- **Auto 模式安全** — 規則寫到不需人類在當下提醒; LLM 在 yolo 模式仍會 follow
+- **指令量約束** — 約 108 條硬性指令, 落在 LLM 穩定遵守的 ~200 條安全帶內
 
-- OpenSpec CLI: `openspec --help` / `openspec instructions <artifact> --change <id>`
-- 工作守則: [`AGENTS.md`](AGENTS.md)
-- Spec 寫作 (EARS 對應、異常路徑): [`docs/spec-writing.md`](docs/spec-writing.md)
-- Codex 介入細節: [`docs/codex-handoff.md`](docs/codex-handoff.md)
-- 輸出格式: [`docs/output-formatting.md`](docs/output-formatting.md)
-- 真實範例: [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/)
+## License
+
+MIT — 見 [LICENSE](LICENSE)
