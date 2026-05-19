@@ -40,6 +40,7 @@ sdd-codex-starter/
 │   │   └── archive/                   ← archive 後的 change 落腳處
 │   └── specs/                         ← 已 archive 進主規格的 capability
 ├── docs/
+│   ├── spec-writing.md               ← EARS 對應、Scenario 模板、異常路徑要求
 │   ├── codex-handoff.md              ← 呼叫 Codex 的 prompt 範本與時機
 │   └── output-formatting.md          ← Codex 回覆視覺格式 (含範例)
 └── examples/
@@ -63,6 +64,7 @@ sdd-codex-starter/
 
 - OpenSpec CLI: `openspec --help` / `openspec instructions <artifact> --change <id>`
 - 工作守則: [`AGENTS.md`](AGENTS.md)
+- Spec 寫作 (EARS 對應、異常路徑): [`docs/spec-writing.md`](docs/spec-writing.md)
 - Codex 介入細節: [`docs/codex-handoff.md`](docs/codex-handoff.md)
 - 輸出格式: [`docs/output-formatting.md`](docs/output-formatting.md)
 - 真實範例: [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/)
