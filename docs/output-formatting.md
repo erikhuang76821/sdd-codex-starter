@@ -1,6 +1,6 @@
 # Output Formatting — Codex 回覆的視覺呈現
 
-這份文件補充 [`../AGENTS.md`](../AGENTS.md) 第 3 節。
+這份文件補充 [`../AGENTS.md`](../AGENTS.md) 第 4 節。
 
 ## 規則
 

@@ -74,7 +74,7 @@ ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-co
 
 | 路徑 | 用途 |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | AI 必讀工作守則 (10 節) |
+| [`AGENTS.md`](AGENTS.md) | AI 必讀工作守則 (入口 + 11 節, 階段細節連到 docs) |
 | [`docs/spec-writing.md`](docs/spec-writing.md) | EARS 5 pattern + 異常路徑強制 |
 | [`docs/task-writing.md`](docs/task-writing.md) | 獨立可驗證 task 規則 |
 | [`docs/codex-handoff.md`](docs/codex-handoff.md) | Codex 觸發時機 + 完整 context 模板 |
