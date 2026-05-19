@@ -95,7 +95,21 @@ OpenSpec validator 對 IF/WHILE/WHERE 都接受 (已驗證過 `openspec validate
 
 不必呼叫的場合: 純 bugfix、refactor、命名調整、文件、樣式。
 
-呼叫方式與 prompt 範本見 `docs/codex-handoff.md`。
+### 完整 Context 傳遞 (硬性)
+
+Codex subagent 跑在**獨立 context**, 看不到 Claude 主對話歷史, 也讀不到本地檔案 (sandbox)。
+所以呼叫時, prompt MUST 包含:
+
+1. **proposal.md 全文** (從本地檔案複製貼上, 不省略)
+2. **design.md 中已決定的 Decisions** (若這不是首個 Decision, 把前面 D1..Dn 完整貼進去)
+3. **當前題目 + 場景 + 體裁限制**
+
+僅給「摘要」或「候選清單」是**禁止行為** — 那會讓 codex 在資訊不對等下評審,
+回覆會附「proposal 無法讀取」之類的免責, 喪失對抗性檢查價值。
+
+在 auto / yolo 模式下這條規則是唯一保險, 因為沒人在當下提醒貼脈絡。
+
+呼叫方式、完整 prompt 範本、反模式見 [`docs/codex-handoff.md`](docs/codex-handoff.md)。
 
 ## 4. Codex 回覆的呈現格式
 
@@ -179,8 +193,10 @@ Codex 回覆 MUST 用視覺區塊與我自己的文字明顯區隔, 避免讀者
 
 1. `design.md` 的 `## Decisions` 區頂端 MUST 含一行:
    ```
-   第二意見來源: <codex (codex:rescue, YYYY-MM-DD) | 無 (理由: <一句話>)>
+   第二意見來源: <codex (codex:rescue, YYYY-MM-DD, 已傳遞: proposal + Decisions <範圍>) | 無 (理由: <一句話>)>
    ```
+   - `Decisions <範圍>` 是當時已 commit 的 Decision 編號 (例: `D1` 或 `D1-D2`), 或 `首個決策`
+   - 此欄位讓人類審計時能快速判斷 codex 是否拿到完整脈絡
 2. 「無」是合法選項, 但理由 MUST 具體 (例: `無 (理由: 純 bugfix, 不涉及技術選型)`), 不接受 `無 (理由: 不需要)`、`N/A`、空白。
 3. 若諮詢結果與最終決定衝突, design.md 個別 Decision 下 MUST 寫「Codex 建議 X, 採 Y, 因為 ...」。
 4. CI grep 守: 凡 `design.md` 內出現 `## Decisions` 區但前面沒有「第二意見來源:」一行 → CI fail。

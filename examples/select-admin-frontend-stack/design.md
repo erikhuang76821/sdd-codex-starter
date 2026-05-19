@@ -19,7 +19,7 @@
 
 ## Decisions
 
-第二意見來源: codex (codex:rescue, 2026-05-19), 內容已納入下列 Decisions。
+第二意見來源: codex (codex:rescue, 2026-05-19, 已傳遞: proposal + 首個決策), 內容已納入下列 Decisions。
 
 ### D1. 主框架: Next.js (App Router)
 
