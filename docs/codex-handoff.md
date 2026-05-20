@@ -111,6 +111,20 @@ do not ask whether to continue.」
 
 不論哪段, 來自 `openspec/changes/<id>/*.md` 的內容 MUST 原文複製貼上, **不要改寫、不要摘要**。摘要會讓 codex 在資訊不對等下作答, 失去第二意見價值。
 
+### 輔助腳本 (非強制)
+
+`scripts/codex-prompt.sh` 會自動按下方三個模板組裝 prompt, 並原文 inline proposal.md / design.md 的 `## Decisions` 段 / spec.md, 印到 stdout。給人類複製貼上, 也方便事後 audit 對照「當時送進 codex 的 prompt 長什麼樣」。
+
+```bash
+bash scripts/codex-prompt.sh --phase proposal --change <id>
+bash scripts/codex-prompt.sh --phase design   --change <id> --question "<一句話當前題目>"
+bash scripts/codex-prompt.sh --phase spec     --change <id> [--capability <name>]
+```
+
+**這只是輔助, 不是執行路徑** — Codex 仍透過 Claude Code 的 `codex:rescue` subagent (或同等 AI agent 機制) 呼叫。腳本不會打 codex API, 不會繞過任何規則。AGENTS §3.4「完整 context」「失敗即停止」等硬規仍適用。
+
+不用腳本也可以, 但手動拼模板很容易因為「proposal 太長, 我貼摘要就好」而違反完整 context 規則 — 用腳本可以 deterministic 避免這種漂移。
+
 ### 為何 design 段 codex 必須看到已決 Decisions
 
 例: 若主框架已選 Next.js, 現在要問 UI 元件庫, codex 必須看到主框架是 Next.js, 否則它可能推薦只與 Vue 配合的 UI 庫。
@@ -236,6 +250,26 @@ Format: bulleted; one sentence per gap saying "which Requirement / Scenario is m
 完備性審查若指出漏洞, **MUST 修 spec 內容** (補 scenario), 不只記在 audit trail。
 若決定不採 codex 某條建議, MUST 在 spec.md 末尾或 design.md Open Questions 內寫「Codex 建議補 X, 不採, 因為 ...」。
 完備性審查不是「跑個流程留證」, 是「找漏 → 補漏」的閉環。
+
+### 衝突解決啟發式 (非 AGENTS 硬規, 僅為判斷輔助)
+
+**這是啟發式 (heuristics), 不是 AGENTS 條款** — 不被 CI grep / hook 強制, 也不該被當成「我照表執行就免責」。AGENTS 只硬性要求「衝突 MUST 留證」(§8.1/§8.2/§8.3 的「Codex 質疑 X, 我們仍採 Y, 因為 ...」); 留證**內容**的取捨, 用下列分類自我校準, 避免兩種失敗模式: (a) 任何 Codex 反對都全盤照改 (失去自主判斷); (b) 任何 Codex 反對都敷衍一句「我覺得不用」(失去對抗價值)。
+
+| Codex 反對的類別 | 預設處理 | 例外條件 | 為什麼 |
+|---|---|---|---|
+| **安全 / 隱私漏洞** (XSS、CSRF、權限繞道、機密外洩、IDOR、TOTP 反重放…) | **預設聽 Codex** | 只在「找到第三方驗證 (security review / pentester / 同等專家) 明確判定無風險」時才覆蓋 | 你看不到的攻擊路徑, codex 看得到的機率非零; 出事的代價遠大於改的成本 |
+| **漏寫 scenario / 異常路徑未覆蓋** (上游失敗 / 認證 / 資料缺 / 降級 四類缺一) | **永遠補進 spec**, 不只寫 audit trail | 無 — 若真的判定不適用, MUST 在 spec 內顯式寫一條「**Out-of-scope**: <為何此情境不在本 capability 處理範圍>」, 而不是默默不補 | spec 是「行為契約」, audit trail 是「決策紀錄」, 不能用後者代替前者; 漏掉的情境會在 prod 變故障 |
+| **技術選型 trade-off** (例: A vs B 框架 / 同步 vs 非同步 / 單體 vs 微服務) | **寫對照表** (Codex 建議 + 你的選擇 + 各自支撐情境), 不接受只寫「我們選 Y」 | 無 — 即使最終選 Y, 對照表也讓未來 reviewer 知道 A/B 都被考慮過 | 沒對照表 = 看不出 codex 真的有被考慮, 等於沒做對抗性審查 |
+| **美學 / 風格偏好** (命名、檔案結構、註解風格、何時用 type alias 等) | **預設保留原決定** | 只在「Codex 指出該風格會撞既有 codebase convention」時才改 | 美學在沒既有規範時取決於誰寫, 不該被「換個模型也有意見」拖走主導權 |
+| **規格不清 / 模稜兩可** (Codex 說「這條 scenario 可有兩種解讀」) | **改 spec 文字使其唯一解讀**, 不是寫 audit trail 解釋 | 無 — spec 模糊一定是 spec 的問題, 修 spec | 修 audit trail 不修 spec = 留下解讀分歧 → 未來實作會分歧 |
+| **超出本 change scope 的建議** (「順便把 X 也重寫」) | **拒絕**, 但在 audit trail 記下「Codex 建議 X, 不在本 change scope」 | 若 Codex 指出的範疇問題會讓本 change 的 spec 直接矛盾, 才擴大 scope | Scope creep 是 SDD 的隱性失敗模式; 拒絕 + 留證 = 後續可開新 change 處理 |
+
+### 反模式 (衝突處理層)
+
+- ❌ **「Codex 也只是個 LLM, 不一定對」** → 沒錯, 但這句不是判斷依據; 該寫的是「我的判斷依據是什麼」
+- ❌ **照單全收所有 Codex 建議** → 等於用 Codex 替代自己思考, 失去對抗性的點 (對抗 = 兩方意見並陳, 不是「找第二個答案再抄」)
+- ❌ **只在不採 Codex 時寫理由, 採時不寫** → 採也要寫「為什麼 codex 是對的」, 否則未來 reviewer 不知是被說服還是被勸退
+- ❌ **把上面「對照表」做成 1 句話的對照** (例: 「Codex 建議 A, 採 B, 因為 B 較快」) → 太短 = 缺乏 trade-off 分析; 最少要有「在什麼情境 A 較好 / 在什麼情境 B 較好 / 本 change 為哪種情境」三段
 
 ## Codex 不可用時 (Fallback SOP)
 

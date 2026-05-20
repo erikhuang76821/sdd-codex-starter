@@ -183,6 +183,98 @@ check_phrase "examples/select-admin-frontend-stack/design.md" "**對使用者 / 
 check_phrase "examples/select-admin-frontend-stack/design.md" "**為何不選**" "reference layered marker 3"
 
 # ---------------------------------------------------------------------------
+# Unit 4b: codex-prompt.sh assembly correctness — the helper script must
+#          inline proposal/design/spec content verbatim (no summary drift).
+#          Uses the reference example as a stable fixture.
+# ---------------------------------------------------------------------------
+section "Unit 4b: codex-prompt.sh assembly"
+
+prompt_script="scripts/codex-prompt.sh"
+if [ ! -f "$prompt_script" ]; then
+  fail "scripts/codex-prompt.sh missing"
+else
+  pass "scripts/codex-prompt.sh present"
+
+  # Stage reference example so the script can find it
+  ref_change="select-admin-frontend-stack"
+  ref_staged=false
+  if [ ! -d "openspec/changes/$ref_change" ]; then
+    cp -r "examples/$ref_change" "openspec/changes/"
+    ref_staged=true
+  fi
+
+  # Proposal phase: must inline a known sentence verbatim
+  proposal_out=$(bash "$prompt_script" --phase proposal --change "$ref_change" 2>&1)
+  if echo "$proposal_out" | grep -qF "舊版後台是 jQuery + 多頁式 PHP 樣板"; then
+    pass "codex-prompt proposal phase inlines proposal.md verbatim"
+  else
+    fail "codex-prompt proposal phase did NOT inline proposal.md content (possible summary drift)"
+  fi
+  if echo "$proposal_out" | grep -qF "BEGIN CODEX PROMPT" \
+     && echo "$proposal_out" | grep -qF "END CODEX PROMPT"; then
+    pass "codex-prompt proposal phase has BEGIN/END markers"
+  else
+    fail "codex-prompt proposal phase missing BEGIN/END markers"
+  fi
+  if echo "$proposal_out" | grep -qF "對抗性審查來源: codex (adversarial-review"; then
+    pass "codex-prompt proposal phase emits audit trail template"
+  else
+    fail "codex-prompt proposal phase missing audit trail template"
+  fi
+
+  # Design phase: must inline proposal + Decisions, and stop before Risks
+  design_out=$(bash "$prompt_script" --phase design --change "$ref_change" --question "test" 2>&1)
+  if echo "$design_out" | grep -qF "D1. 主框架: Next.js" \
+     && echo "$design_out" | grep -qF "D4. 資料層"; then
+    pass "codex-prompt design phase inlines all 4 Decisions"
+  else
+    fail "codex-prompt design phase did NOT inline all 4 Decisions"
+  fi
+  if echo "$design_out" | grep -qF "## Risks / Trade-offs"; then
+    fail "codex-prompt design phase leaked Risks section (should stop at next ## heading)"
+  else
+    pass "codex-prompt design phase correctly stops before ## Risks"
+  fi
+  if echo "$design_out" | grep -qF "Decisions D1-D4"; then
+    pass "codex-prompt design phase auto-detects decisions range"
+  else
+    fail "codex-prompt design phase did NOT auto-detect decisions range (D1-D4)"
+  fi
+
+  # Spec phase: must auto-detect single capability and inline spec
+  spec_out=$(bash "$prompt_script" --phase spec --change "$ref_change" 2>&1)
+  if echo "$spec_out" | grep -qF "完備性審查來源: codex (review"; then
+    pass "codex-prompt spec phase emits audit trail template"
+  else
+    fail "codex-prompt spec phase missing audit trail template"
+  fi
+  if echo "$spec_out" | grep -qF "Completeness checklist"; then
+    pass "codex-prompt spec phase includes completeness checklist"
+  else
+    fail "codex-prompt spec phase missing completeness checklist"
+  fi
+
+  # Error path: nonexistent change must exit nonzero
+  if bash "$prompt_script" --phase proposal --change does-not-exist-xyz >/dev/null 2>&1; then
+    fail "codex-prompt accepted nonexistent change (should exit nonzero)"
+  else
+    pass "codex-prompt rejects nonexistent change"
+  fi
+
+  # Missing required args must exit nonzero
+  if bash "$prompt_script" --phase proposal >/dev/null 2>&1; then
+    fail "codex-prompt accepted missing --change (should exit nonzero)"
+  else
+    pass "codex-prompt rejects missing --change"
+  fi
+
+  # Cleanup
+  if [ "$ref_staged" = "true" ]; then
+    rm -rf "openspec/changes/$ref_change"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Unit 5: openspec CLI must be available (informational; CI installs it)
 # ---------------------------------------------------------------------------
 section "Unit 5: openspec CLI presence"
@@ -194,31 +286,43 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Integration 1: Reference example must always pass strict validate
+# Integration 1: All examples must pass openspec validate --strict.
+#                Each example covers a different SDD trigger shape:
+#                  - select-admin-frontend-stack : technical-selection (4 Decisions, 6 Reqs)
+#                  - add-user-login              : pure new feature (full Codex audits)
+#                  - enable-2fa                  : MODIFIED Requirements (copy-then-modify rule)
+#                  - clarify-login-error-wording : legitimate Codex audit-skip ("無 (理由: 具體)")
 # ---------------------------------------------------------------------------
-section "Integration 1: reference example strict validate"
+section "Integration 1: all examples strict validate"
+
+examples_list=(
+  select-admin-frontend-stack
+  add-user-login
+  enable-2fa
+  clarify-login-error-wording
+)
 
 if ! command -v openspec >/dev/null 2>&1; then
   echo "  SKIP  openspec CLI not available, skipping integration tests"
 else
-  # Stage example into openspec/changes (idempotent)
-  staged=false
-  if [ ! -d "openspec/changes/select-admin-frontend-stack" ]; then
-    cp -r examples/select-admin-frontend-stack openspec/changes/
-    staged=true
-  fi
+  for example_id in "${examples_list[@]}"; do
+    staged=false
+    if [ ! -d "openspec/changes/$example_id" ]; then
+      cp -r "examples/$example_id" openspec/changes/
+      staged=true
+    fi
 
-  if openspec validate select-admin-frontend-stack --strict >/dev/null 2>&1; then
-    pass "examples/select-admin-frontend-stack passes openspec validate --strict"
-  else
-    fail "examples/select-admin-frontend-stack FAILS openspec validate --strict"
-    openspec validate select-admin-frontend-stack --strict 2>&1 | sed 's/^/        /'
-  fi
+    if openspec validate "$example_id" --strict >/dev/null 2>&1; then
+      pass "examples/$example_id passes openspec validate --strict"
+    else
+      fail "examples/$example_id FAILS openspec validate --strict"
+      openspec validate "$example_id" --strict 2>&1 | sed 's/^/        /'
+    fi
 
-  # Cleanup if we staged
-  if [ "$staged" = "true" ]; then
-    rm -rf openspec/changes/select-admin-frontend-stack
-  fi
+    if [ "$staged" = "true" ]; then
+      rm -rf "openspec/changes/$example_id"
+    fi
+  done
 fi
 
 # ---------------------------------------------------------------------------
@@ -361,6 +465,28 @@ else
   fi
 
   cd "$repo_root"
+fi
+
+# ---------------------------------------------------------------------------
+# Unit 6: matrix consistency — the "預設約 **N 條測試**" number in
+#         docs/testing.md must equal the actual count of tests run by
+#         this script. Forces matrix to be updated alongside test changes.
+# ---------------------------------------------------------------------------
+section "Unit 6: testing.md matrix consistency"
+
+documented=$(grep -oE '預設約 \*\*[0-9]+ 條測試\*\*' docs/testing.md | grep -oE '[0-9]+' | head -1)
+
+if [ -z "$documented" ]; then
+  fail "docs/testing.md missing '預設約 **N 條測試**' line"
+else
+  # test_count at this point excludes this very test. +1 accounts for the
+  # pass/fail call this branch is about to make.
+  expected=$((test_count + 1))
+  if [ "$documented" -eq "$expected" ]; then
+    pass "docs/testing.md documents $documented tests, matches actual $expected"
+  else
+    fail "docs/testing.md says $documented tests but actual is $expected — update the matrix + total"
+  fi
 fi
 
 # ---------------------------------------------------------------------------

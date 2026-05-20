@@ -77,7 +77,7 @@ openspec --version
 # 3. (可選但建議) 啟用本機 pre-commit hook
 ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-# 4. 驗證 starter 完整 — 應該 47/47 全綠
+# 4. 驗證 starter 完整 — 應該 78/78 全綠
 bash scripts/test.sh
 ```
 
@@ -128,20 +128,91 @@ bash scripts/test.sh
 | [`docs/output-formatting.md`](docs/output-formatting.md) | Codex 回覆視覺區塊格式 |
 | [`docs/testing.md`](docs/testing.md) | 怎麼跑 starter 自驗 + 加新測試 |
 | [`hooks/`](hooks/) | 本機 `pre-commit` + 安裝指南 |
-| [`scripts/test.sh`](scripts/test.sh) | 63 條單元 + 整合測試 (本機 / CI 共用) |
+| [`scripts/test.sh`](scripts/test.sh) | 78 條單元 + 整合測試 (本機 / CI 共用) — 含測試矩陣一致性檢查 (Unit 6) |
+| [`scripts/codex-prompt.sh`](scripts/codex-prompt.sh) | 輔助: 按 docs/codex-handoff.md 三模板, 自動 inline 原文組裝 Codex prompt (非強制, 不繞過規則) |
 | [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 7 個結構 grep + 跑 scripts/test.sh |
-| [`examples/select-admin-frontend-stack/`](examples/select-admin-frontend-stack/) | 完整 reference change (strict validate 通過, D1-D4 含分層描述) |
+| [`examples/`](examples/) | 4 個 reference changes 覆蓋 4 種觸發類型: technical-selection ([`select-admin-frontend-stack`](examples/select-admin-frontend-stack/)) / pure-new-feature ([`add-user-login`](examples/add-user-login/)) / MODIFIED Requirements ([`enable-2fa`](examples/enable-2fa/)) / legitimate Codex audit-skip ([`clarify-login-error-wording`](examples/clarify-login-error-wording/)) |
 | `openspec/changes/archive/`, `openspec/specs/` | 空骨架, `openspec` CLI 預期路徑 |
+
+## 與 multi-agent orchestrator 的相容性
+
+> **這節是設計意圖陳述, 不是 AGENTS 條款** — 不被 CI 或 hook 強制, 只說明 starter 與其他 framework 的關係。
+
+SDD 紀律與 agent orchestration 是**正交**的兩件事:
+
+- **SDD 紀律** (proposal → design → spec → tasks + Codex 三審 + audit trail) 由 [`AGENTS.md`](AGENTS.md) 規範, 全部寫死在 repo 內
+- **Agent orchestration** (用幾個 agent / 怎麼分工 / 任務怎麼派發) 由 runtime 決定, 不在本 starter 範圍
+
+意思是: **不論你用哪種 orchestration, 只要走 proposal/design/spec/tasks 四階段, 就遵守同一套規則**。
+
+| Runtime / Framework | 相容性 | 備註 |
+|---|---|---|
+| 單 agent Claude Code | ✅ 原生支援 | `CLAUDE.md` 自動指向 `AGENTS.md`; `/codex:rescue` subagent 走三審 |
+| Codex CLI (單獨用) | ✅ | 主動掃 `AGENTS.md` 命名; SDD 紀律即生效 |
+| Cursor / Aider | ✅ | 需自加 `.cursorrules` / 等價 stub `→ 讀 AGENTS.md` |
+| OMC (autopilot / team / ralph 模式) | ✅ | OMC 負責「派幾個 worker」, AGENTS 負責「每個 worker 都要走 SDD」; 二者不衝突 |
+| claude-flow / 同類 multi-agent runtime | ✅ | 同上, orchestration 跑 orchestration, SDD 跑 SDD |
+| GitHub Copilot inline | ⚠ 部分 | 不會自動讀 AGENTS, 人類 review 補位; PR 提交時 CI grep 仍守底 |
+
+### 為什麼能保持正交
+
+- **規則層** (AGENTS.md / docs/) 只規範「進到 SDD 階段時必須做什麼」, 不規範「誰在做」
+- **守門層** (hooks/pre-commit + CI grep + scripts/test.sh) 純粹 grep 檔案結構, 不關心是哪個 agent 寫的
+- **Codex 介入** (§3.1/§3.2/§3.3) 是 SDD 流程的內建步驟, 與外層 orchestration 無相依 — `Agent(subagent_type="codex:codex-rescue")` 在單 agent / multi-agent 環境語意相同
+
+### 實務指引
+
+- 用 `/autopilot "build X"` 或同類自動模式時, AGENTS §0 觸發條件仍然生效 — 預期看到 worker 先跑 `openspec new change`, 不直接動 code
+- multi-agent 環境下, 三階段 Codex audit 可以由 lead agent 統一發起, 或由執行 spec 階段的 worker agent 自己呼叫 — 兩種都 OK, audit trail 寫進對應檔即可
+- 不論誰呼叫 codex, [§3.4 完整 context](AGENTS.md) 與 [§8 留證格式](AGENTS.md) 都不變
+
+簡言之: **SDD 紀律是 repo 內的 invariant, 不依賴特定 runtime 提供**。換 runtime / 多 agent 並用都不影響規則, 也不影響本 starter 的 78 條自驗。
 
 ## 設計原則
 
 - **最低底線** — 不含 npm/git 設定、CI/CD 模板、腳手架腳本; 加什麼自己加
 - **規則 in code, 證據 in repo** — `AGENTS.md` 寫規則, `examples/` 留證據, `validate.yml` 守規則
 - **Auto 模式安全** — 規則寫到不需人類在當下提醒; LLM 在 yolo / no-confirm 模式仍會 follow
-- **自驗** — 63 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度)
+- **自驗** — 78 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度、codex-prompt 組裝正確性、4 個 examples 都 strict-validate 通過、測試矩陣一致性)
 - **零隱藏依賴** — 規則全在 repo 內, 無本機 memory / 帳號 secret / 雲端 API key 依賴; `git clone` 即完整
 - **跨職能可讀** — design.md 不只給工程看, 每個 Decision 強制分層描述 (`**一句話** / **對使用者影響** / **為何不選** / 工程理由`), 讓 PM / 企劃也能參與 review
 - **指令量約束** — 約 130 條硬性指令, 落在 LLM 穩定遵守的 ~200 條安全帶內
+
+## 版本與升級
+
+當前版本見 [CHANGELOG.md](CHANGELOG.md)。版本語意:
+
+- **MAJOR**: AGENTS.md 條款不向後相容
+- **MINOR**: 新規則 / 新範例 / 新 helper, 不破既有 change
+- **PATCH**: 文件 / 內部測試擴充
+
+### How to upgrade from an earlier copy
+
+若你已拷走某個舊版 starter 到自己的專案, 想升級到新版:
+
+1. **看 CHANGELOG** ([`CHANGELOG.md`](CHANGELOG.md)) 從你拷走的版本一路讀到 unreleased, 留意 `Migration / Upgrade Notes` 段
+2. **不要無腦覆蓋** — 下列檔案你**可能改過**, 升級時 review diff 後再決定:
+   - `CLAUDE.md` (若你加了專案自己的 quick triggers)
+   - `examples/` (若你刪了不需要的範例)
+   - `.github/workflows/validate.yml` (若你加了專案 CI)
+   - `hooks/pre-commit` (若你加了專案 lint)
+3. **可放心 rsync 覆蓋的目錄** (這些是 starter 自身規則, 你不該改):
+   - `AGENTS.md`
+   - `docs/*.md`
+   - `scripts/test.sh`、`scripts/codex-prompt.sh`
+4. **跑驗證**: `bash scripts/test.sh` 全綠才算升級成功
+5. **重跑既有 change**: 若 CHANGELOG 提到 audit trail 格式改變, MUST 把既有 `openspec/changes/<id>/` 的 audit 欄位同步更新
+
+### Breaking change 偵測
+
+每次升級前可跑這個快速檢查:
+
+```bash
+# 比對你當前 starter 與目標版本的 AGENTS.md
+diff <(cat AGENTS.md) <(git show v<target>:AGENTS.md)
+```
+
+若 diff 內出現 audit trail 欄位名 / 必填 marker 名 / MUST / SHALL 子句的增刪, 那就是 breaking change, 要先評估既有 change 受影響範圍再升。
 
 ## License
 
