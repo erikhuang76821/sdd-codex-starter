@@ -25,11 +25,13 @@
 - README 「與 multi-agent orchestrator 的相容性」章節 — 闡明 SDD 紀律與 orchestration 正交
 - `scripts/test.sh` 新增 **Unit 4b** (11 條): `codex-prompt.sh` 組裝正確性 (proposal/design/spec 原文 inline / Decisions range 偵測 / 錯誤路徑)
 - `scripts/test.sh` 新增 **Unit 6** (1 條): 測試矩陣一致性 — grep `預設約 **N 條測試**` 與實際 PASS 計數比對, 強制每加新測試就更新矩陣
+- `scripts/test.sh` 新增 **Unit 7** (1 條): AGENTS.md 指令量預算 — grep AGENTS.md 強指令行數, >180 hard fail, 守規則密度不漂移過 LLM stable band
 - `scripts/test.sh` 擴 **Integration 1** 從 1 條 → 4 條: 4 個 examples 都跑 strict-validate
 
 ### Changed
 
-- `scripts/test.sh` 總測試數 47 → 78 (反映 starter 自身規則密度提升)
+- `scripts/test.sh` 總測試數 47 → 79 (反映 starter 自身規則密度提升 + 新增 Unit 7 指令預算自驗)
+- README 「指令量約束」改為**機器驗證**版本: 從靜態宣稱「約 130 條」改為「AGENTS.md <100 條, Unit 7 強制 <=180」, 與實際量測對齊
 - `README.md` 結構表加入 `scripts/codex-prompt.sh` + 4 個 examples 連結 + 反映 78 條 test
 - `docs/testing.md` 反映 4 個 examples + 矩陣一致性檢查機制
 

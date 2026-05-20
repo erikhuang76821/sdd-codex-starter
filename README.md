@@ -77,7 +77,7 @@ openspec --version
 # 3. (可選但建議) 啟用本機 pre-commit hook
 ln -s ../../hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-# 4. 驗證 starter 完整 — 應該 78/78 全綠
+# 4. 驗證 starter 完整 — 應該 79/79 全綠
 bash scripts/test.sh
 ```
 
@@ -128,7 +128,7 @@ bash scripts/test.sh
 | [`docs/output-formatting.md`](docs/output-formatting.md) | Codex 回覆視覺區塊格式 |
 | [`docs/testing.md`](docs/testing.md) | 怎麼跑 starter 自驗 + 加新測試 |
 | [`hooks/`](hooks/) | 本機 `pre-commit` + 安裝指南 |
-| [`scripts/test.sh`](scripts/test.sh) | 78 條單元 + 整合測試 (本機 / CI 共用) — 含測試矩陣一致性檢查 (Unit 6) |
+| [`scripts/test.sh`](scripts/test.sh) | 79 條單元 + 整合測試 (本機 / CI 共用) — 含測試矩陣一致性 (Unit 6) + AGENTS 指令預算 (Unit 7) |
 | [`scripts/codex-prompt.sh`](scripts/codex-prompt.sh) | 輔助: 按 docs/codex-handoff.md 三模板, 自動 inline 原文組裝 Codex prompt (非強制, 不繞過規則) |
 | [`.github/workflows/validate.yml`](.github/workflows/validate.yml) | CI: strict validate + 7 個結構 grep + 跑 scripts/test.sh |
 | [`examples/`](examples/) | 4 個 reference changes 覆蓋 4 種觸發類型: technical-selection ([`select-admin-frontend-stack`](examples/select-admin-frontend-stack/)) / pure-new-feature ([`add-user-login`](examples/add-user-login/)) / MODIFIED Requirements ([`enable-2fa`](examples/enable-2fa/)) / legitimate Codex audit-skip ([`clarify-login-error-wording`](examples/clarify-login-error-wording/)) |
@@ -166,17 +166,17 @@ SDD 紀律與 agent orchestration 是**正交**的兩件事:
 - multi-agent 環境下, 三階段 Codex audit 可以由 lead agent 統一發起, 或由執行 spec 階段的 worker agent 自己呼叫 — 兩種都 OK, audit trail 寫進對應檔即可
 - 不論誰呼叫 codex, [§3.4 完整 context](AGENTS.md) 與 [§8 留證格式](AGENTS.md) 都不變
 
-簡言之: **SDD 紀律是 repo 內的 invariant, 不依賴特定 runtime 提供**。換 runtime / 多 agent 並用都不影響規則, 也不影響本 starter 的 78 條自驗。
+簡言之: **SDD 紀律是 repo 內的 invariant, 不依賴特定 runtime 提供**。換 runtime / 多 agent 並用都不影響規則, 也不影響本 starter 的 79 條自驗。
 
 ## 設計原則
 
 - **最低底線** — 不含 npm/git 設定、CI/CD 模板、腳手架腳本; 加什麼自己加
 - **規則 in code, 證據 in repo** — `AGENTS.md` 寫規則, `examples/` 留證據, `validate.yml` 守規則
 - **Auto 模式安全** — 規則寫到不需人類在當下提醒; LLM 在 yolo / no-confirm 模式仍會 follow
-- **自驗** — 78 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度、codex-prompt 組裝正確性、4 個 examples 都 strict-validate 通過、測試矩陣一致性)
+- **自驗** — 79 條 unit + integration 測試 ([`scripts/test.sh`](scripts/test.sh)) 守規則文件本身不漂移 (連結、章節編號、關鍵字、hook 行為、bootstrap 流暢度、codex-prompt 組裝正確性、4 個 examples 都 strict-validate 通過、測試矩陣一致性、AGENTS 指令量預算)
 - **零隱藏依賴** — 規則全在 repo 內, 無本機 memory / 帳號 secret / 雲端 API key 依賴; `git clone` 即完整
 - **跨職能可讀** — design.md 不只給工程看, 每個 Decision 強制分層描述 (`**一句話** / **對使用者影響** / **為何不選** / 工程理由`), 讓 PM / 企劃也能參與 review
-- **指令量約束** — 約 130 條硬性指令, 落在 LLM 穩定遵守的 ~200 條安全帶內
+- **指令量約束** — AGENTS.md (always-loaded) 維持 <100 條強指令 (`MUST` / `SHALL` / `不得` / `禁止` / `❌` / `一律`), 加上 on-demand 載入的 `docs/` 約 100 條, 總計仍在 LLM 穩定遵守的 ~200 條安全帶內。`scripts/test.sh` Unit 7 守 AGENTS.md 不超過 180 (見 [docs/testing.md](docs/testing.md) 測試矩陣)
 
 ## 版本與升級
 

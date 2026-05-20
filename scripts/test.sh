@@ -468,6 +468,33 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Unit 7: AGENTS.md instruction count budget — guards against silent
+#         rule-density bloat past the LLM rule-following stable band.
+#
+#         Metric: lines in AGENTS.md containing a strong directive keyword
+#         (MUST / SHALL / 不得 / 禁止 / ❌ / 一律). AGENTS.md is the
+#         always-loaded entry point — docs/* are on-demand per AGENTS §3.4,
+#         so AGENTS.md is the true cognitive-load surface.
+#
+#         Thresholds (calibrated against the ~200 LLM-stable band, leaving
+#         ~50-80 headroom for docs/ loaded during a given phase):
+#           - <100 lines     → within budget (PASS)
+#           - 100-180 lines  → warning, review for consolidation (PASS w/ warn)
+#           - >180 lines     → hard FAIL (likely past stable band)
+# ---------------------------------------------------------------------------
+section "Unit 7: AGENTS.md instruction count budget"
+
+agents_count=$(grep -cE "(\bMUST\b|\bSHALL\b|不得|禁止|❌|一律)" AGENTS.md)
+
+if [ "$agents_count" -gt 180 ]; then
+  fail "AGENTS.md has $agents_count strong-directive lines, exceeds 180 hard ceiling — likely past ~200 LLM-stable band when docs/ are loaded; consolidate or move detail to docs/"
+elif [ "$agents_count" -gt 100 ]; then
+  pass "AGENTS.md has $agents_count strong-directive lines (warn zone 100-180: review for consolidation but acceptable)"
+else
+  pass "AGENTS.md has $agents_count strong-directive lines (within <100 budget)"
+fi
+
+# ---------------------------------------------------------------------------
 # Unit 6: matrix consistency — the "預設約 **N 條測試**" number in
 #         docs/testing.md must equal the actual count of tests run by
 #         this script. Forces matrix to be updated alongside test changes.

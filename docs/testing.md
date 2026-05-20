@@ -11,7 +11,7 @@ bash scripts/test.sh
 
 回傳 0 = 全綠, 非 0 = 至少一條 fail (每條 fail 在 stdout 有具體訊息)。
 
-預設約 **78 條測試**, 跑完約 15-30 秒 (含 fresh-bootstrap 那段較慢)。
+預設約 **79 條測試**, 跑完約 15-30 秒 (含 fresh-bootstrap 那段較慢)。
 
 ## 測試內容
 
@@ -37,7 +37,7 @@ bash scripts/test.sh
 
 每條測試守一個 invariant。本表讓 fork-maintainer 在「我改 X 行會壞哪條測試」「為什麼有這條測試」之間秒解 — 不必逐行讀 `scripts/test.sh`。
 
-### 總覽 (10 群組 = 78 條)
+### 總覽 (11 群組 = 79 條)
 
 | 群組 | 條數 | 守的 invariant | 對應 AGENTS § | 故意壞它的最小擾動 |
 |---|---|---|---|---|
@@ -51,6 +51,7 @@ bash scripts/test.sh
 | **Int 2** Hook negative tests | 8 | `hooks/pre-commit` 攔得住 7 種違規 + 1 baseline 不誤殺 | §3.5 §6 §7 §8 | 見下方明細, 每行刪一種 |
 | **Int 3** Fresh-bootstrap | 2 | 拷到新目錄 + `openspec new change` 仍可用 | — | 刪 `openspec/` 骨架資料夾 |
 | **Unit 6** 矩陣一致性 | 1 | 本表「總計 N 條」與 `scripts/test.sh` 實際 PASS 數相符 | — | 加新測試但不更新本表 |
+| **Unit 7** AGENTS 指令預算 | 1 | AGENTS.md 強指令行數 (`MUST` / `SHALL` / `不得` / `禁止` / `❌` / `一律`) <= 180 (~200 LLM 穩定帶 - on-demand docs 預留) | — | 在 AGENTS.md 連續加 130+ 個 MUST/SHALL |
 
 ### Unit 4 關鍵字回歸明細 (依主題, 29 條)
 
