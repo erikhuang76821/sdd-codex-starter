@@ -10,6 +10,14 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- `README.en.md` — full English translation of `README.md` with language toggle at top of both files. AGENTS.md and docs/ remain Traditional Chinese by design (LLM context is multilingual; structural keywords MUST/SHALL are English-native so CI grep works regardless).
+
+---
+
 ## [0.1.0] — 2026-05-20
 
 第一個 tagged release。Codex 對抗審查後落地的 starter 優化首批。
