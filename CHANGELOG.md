@@ -23,6 +23,12 @@
 
 Net effect: ~1,080 fewer tokens per session in Codex-touching SDD flows, ~484 of which is always-loaded.
 
+### Changed (token-budget trim, P2 partial — §0 list consolidation)
+
+- `AGENTS.md` §0 「禁止行為」list: 8 bullets → 4 bullets. Three of the original eight (「先實作簡單版」/「prototype 試水溫」/「事後補文件化」) were three angles of the same anti-pattern (code-before-spec); merged into one bullet with the variants inline. The 「不觸發的場合」 + 「注意」blocks were folded into one block; the「注意」message ("size is not a trigger") is now phrased as a parenthetical inside the「不觸發」heading.
+- `AGENTS.md`: 278 → 272 lines, ~84 fewer always-loaded tokens. Unit 7 instruction count: 56 → 52 (still well within budget).
+- No regression: Unit 4 anchors (`太簡單`, `規則沒有例外`, `立即啟動 SDD 流程`) preserved.
+
 ---
 
 ## [0.1.0] — 2026-05-20
