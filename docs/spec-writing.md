@@ -156,6 +156,7 @@ OpenSpec scenario 用 `WHEN/THEN` 模板, 剛好對應 EARS 的 event-driven pat
 - [ ] `openspec validate <change-id> --strict` 通過
 - [ ] spec.md 頂端含 `<!-- 完備性審查來源: ... -->` (Codex 完備性審查 audit trail, AGENTS §8.3)
 - [ ] spec.md 頂端含 `<!-- approved-by: ... -->` (人類審核, AGENTS §7)
+- [ ] **寫 approved-by 之前**: 跑 `git ls-files | grep <capability>` 或在專案中搜尋對應 capability 名稱, 確認**還沒**有實作檔存在; 若已存在 → AI 可能在 spec 還沒過審前就先 brainstorm code, MUST 退回 design 階段重審, 不可寫 approved-by。此條為**人類 review 責任**, 機器層無法可靠檢測 (git 時序 / commit 順序皆可被改寫或繞過)
 
 ## 完備性審查 (Codex review)
 

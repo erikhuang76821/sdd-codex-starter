@@ -29,6 +29,10 @@ Net effect: ~1,080 fewer tokens per session in Codex-touching SDD flows, ~484 of
 - `AGENTS.md`: 278 → 272 lines, ~84 fewer always-loaded tokens. Unit 7 instruction count: 56 → 52 (still well within budget).
 - No regression: Unit 4 anchors (`太簡單`, `規則沒有例外`, `立即啟動 SDD 流程`) preserved.
 
+### Added (human-review backstop)
+
+- `docs/spec-writing.md` checklist: new bullet "before writing approved-by, grep for the capability name and confirm no implementation files exist yet — if they do, AI likely brainstormed code before spec approval, MUST return to design". Pushes this invariant explicitly to the human-review layer, since git timing/commit ordering can be rewritten or bypassed and cannot be reliably machine-enforced. Considered (and rejected via Codex adversarial review) a pre-commit hook / opt-in audit script for the same invariant: the escape hatch would be a zero-cost AI bypass and the gate would create false reviewer confidence — net-negative.
+
 ---
 
 ## [0.1.0] — 2026-05-20
