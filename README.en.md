@@ -218,6 +218,12 @@ diff <(cat AGENTS.md) <(git show v<target>:AGENTS.md)
 
 If the diff shows additions / removals of audit trail field names / required marker names / MUST / SHALL clauses, that's a breaking change — assess the impact on existing changes before upgrading.
 
+## Acknowledgments
+
+This starter is built on top of [**OpenSpec**](https://github.com/Fission-AI/OpenSpec) ([`@fission-ai/openspec`](https://www.npmjs.com/package/@fission-ai/openspec)) — the SDD CLI that powers the `proposal → design → spec → tasks` workflow, `openspec validate --strict` structural enforcement, and the change-archive model. This starter wraps that foundation with Codex adversarial review and machine-layer audit-trail enforcement. Without OpenSpec, this starter is an empty shell.
+
+The EARS requirements syntax originates from Mavin et al., *Easy Approach to Requirements Syntax*, RE 2009 — see [`docs/spec-writing.md`](docs/spec-writing.md) "進一步閱讀".
+
 ## License
 
 MIT — see [LICENSE](LICENSE)

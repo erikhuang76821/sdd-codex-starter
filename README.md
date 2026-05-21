@@ -99,7 +99,7 @@ bash scripts/test.sh
 | | 在 repo 內 | 跨機可攜 |
 |---|---|---|
 | SDD 流程、Codex 介入、EARS、Audit Trail、CI 守則 | ✅ AGENTS.md / docs/ / hooks/ / .github/ | ✅ `git clone` 就完整 |
-| 47 條自驗測試 | ✅ scripts/test.sh | ✅ 跨機可驗 |
+| 79 條自驗測試 | ✅ scripts/test.sh | ✅ 跨機可驗 |
 | 個人偏好 (Claude Code memory) | ❌ 本機 `~/.claude/.../memory/` | ⚠ 不會跟 repo 一起搬, 但**進 starter 內 memory 是冗餘的**, 因為規則已 lift 到 AGENTS.md |
 
 意思是: **在 sdd-codex-starter 工作的情境, 完全不依賴本機 memory**。新電腦 clone repo + 裝 prereq 就齊全。
@@ -215,6 +215,12 @@ diff <(cat AGENTS.md) <(git show v<target>:AGENTS.md)
 ```
 
 若 diff 內出現 audit trail 欄位名 / 必填 marker 名 / MUST / SHALL 子句的增刪, 那就是 breaking change, 要先評估既有 change 受影響範圍再升。
+
+## Acknowledgments
+
+本 starter 建立在 [**OpenSpec**](https://github.com/Fission-AI/OpenSpec) ([`@fission-ai/openspec`](https://www.npmjs.com/package/@fission-ai/openspec)) 之上 — 它提供了 `proposal → design → spec → tasks` 四階段工作流、`openspec validate --strict` 結構驗證、以及 change archive 模型, 本 starter 在這個基礎上加 Codex 對抗性審查與 audit trail 機器層守護。沒有 OpenSpec, 本 starter 等於空殼。
+
+EARS 需求語法源於 Mavin et al., *Easy Approach to Requirements Syntax*, RE 2009 — 詳見 [`docs/spec-writing.md`](docs/spec-writing.md) 「進一步閱讀」。
 
 ## License
 
