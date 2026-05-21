@@ -16,6 +16,13 @@
 
 - `README.en.md` — full English translation of `README.md` with language toggle at top of both files. AGENTS.md and docs/ remain Traditional Chinese by design (LLM context is multilingual; structural keywords MUST/SHALL are English-native so CI grep works regardless).
 
+### Changed (token-budget trim, P1 of redundancy audit)
+
+- `docs/codex-handoff.md`: deleted entire `## Token 帳本` section (43 lines, ~595 tokens). It was pure meta-discussion about token economics that didn't change agent behaviour. The empirical answer ("don't summarize the context") is preserved in the existing `## 反模式` and `## 完整 Context 傳遞` sections, which remain.
+- `CLAUDE.md`: slimmed from 45 → 15 lines (~945 → ~461 tokens, **always-loaded saving**). Removed the trigger table and Codex three-stage table that duplicated AGENTS.md §0 and §3. Kept the STOP directive, the "task size is NOT a trigger" anchor, and explicit pointers to AGENTS sections. CLAUDE.md is now genuinely a stub.
+
+Net effect: ~1,080 fewer tokens per session in Codex-touching SDD flows, ~484 of which is always-loaded.
+
 ---
 
 ## [0.1.0] — 2026-05-20

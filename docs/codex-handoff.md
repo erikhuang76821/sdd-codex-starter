@@ -367,49 +367,6 @@ node "$HOME/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-com
 - ❌ **spec 完備性審查只記 audit trail, 不補 spec** → 留證但不修, 是規避; 必須補完 scenario 後再進 approved-by
 - ❌ **Bugfix / refactor / 純文件 也叫 codex 三次** → 浪費 token, 流程僵化; 例外場合用「無 (理由: ...)」走 audit trail
 
-## Token 帳本
-
-每次 Codex 諮詢對 Claude **主 context** 的成本:
-
-| 段 | Token 估計 | 進主 context? |
-|---|---|---|
-| Claude 寫 prompt (完整 context 段) | ~500-1500 | ✅ Claude 的 assistant message |
-| Codex subagent 內部讀 prompt + 思考 + 寫回覆 | ~3000-8000 | ❌ Subagent 隔離 budget |
-| Codex 回覆作為 tool_result 返回 | ~300-800 | ✅ 進主 context |
-
-**單次成本 ≈ 1000-2000 tokens 進主 context**。
-**一個 change 三次呼叫 (proposal + design + spec) ≈ 3000-6000 tokens 進主 context**。
-
-對不同 context 容量的比例:
-
-| Context window | 單次比例 | 一個 change × 3 階段審查 + 4 Decisions |
-|---|---|---|
-| Opus 1M | < 0.2% | < 2% |
-| Standard 200K | < 1% | < 5% |
-| Standard 32K | 3-6% | 25-50% (吃緊) |
-
-### 為什麼「完整 context」是對的權衡
-
-對比「只給摘要」版本:
-
-| 版本 | 單次成本 | 省下 | 代價 |
-|---|---|---|---|
-| 完整 context (現規則) | ~1000 | — | — |
-| 只給摘要 | ~500 | ~500 | Codex 失去脈絡覺, 回覆附「資訊不足」免責 |
-
-省 500 tokens 等於 1M context 的 0.05%。為這個換掉對抗性檢查 — 失衡。
-
-### Subagent 內部 token 不計
-
-Codex 自己讀 prompt、思考、寫回覆的 3-8K tokens 是 **subagent 隔離 context budget**,
-跟主 context 無關。不要把 subagent 內部成本算進主 context 預算。
-
-### 何時該動 token 優化
-
-- ❌ 1M / 200K context: 不必動, 三階段審查累積成本 < 5%
-- ⚠ 32K 小模型: 一個 change 累積到 25-50%, 這時候做 spec-driven 本身就吃緊;
-  若必須優化, 應該換大 context model, 不是改規則 — 或在 proposal / spec 階段用「無 (理由: 具體說明)」escape hatch, 而不是改全套規則
-
 ## 為何 Auto 模式必須遵守
 
 在 Claude Code auto / yolo / no-confirm 模式下, Claude 不會逐 prompt 與人類確認。
